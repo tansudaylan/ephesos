@@ -151,11 +151,11 @@ for b in range(len(listtypelang)):
             
             dictdefa = dict()
             dictdefa['cosicomp'] = dict()
-            dictdefa['cosicomp']['labl'] = ['$\cos i$', '']
+            dictdefa['cosicomp']['labl'] = [r'$\cos i$', '']
             dictdefa['cosicomp']['scal'] = 'self'
             if typesyst != 'cosc':
                 dictdefa['radicomp'] = dict()
-                dictdefa['radicomp']['labl'] = ['$R_p$', '$R_\oplus$']
+                dictdefa['radicomp']['labl'] = [r'$R_p$', r'$R_\oplus$']
                 dictdefa['radicomp']['scal'] = 'self'
     
             listlablpara, listscalpara, listlablroot, listlablunit, listlabltotl = tdpy.retr_listlablscalpara(listnamevarbtotl, \
@@ -377,7 +377,12 @@ for b in range(len(listtypelang)):
                     # maximum time
                     maxmtime = 0.5 * 1.5 * duratrantotl
                 # time axis
-                time = np.arange(minmtime, maxmtime, cade)
+                minmtime = float(np.asarray(minmtime).reshape(())) if np.asarray(minmtime).size == 1 else minmtime
+                maxmtime = float(np.asarray(maxmtime).reshape(())) if np.asarray(maxmtime).size == 1 else maxmtime
+                if not np.isfinite(minmtime) or not np.isfinite(maxmtime) or np.isclose(minmtime, maxmtime, rtol=0., atol=1e-15):
+                    time = np.array([0.5 * (minmtime + maxmtime)]) if np.isfinite(minmtime) and np.isfinite(maxmtime) else np.array([0.])
+                else:
+                    time = np.arange(minmtime, maxmtime, cade)
                 
                 for k in range(len(dictlistvalubatc[namebatc]['vari'][nameparavari])):
                     

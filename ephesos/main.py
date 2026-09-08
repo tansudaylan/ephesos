@@ -1019,10 +1019,10 @@ def eval_modl( \
               
               # parametrization of orbital parameters relevant to transits
               ## orbital periods of the companions
-              pericomp, \
+              pericomp=None, \
               
               ## mid-transit epochs of the companions
-              epocmtracomp, \
+              epocmtracomp=None, \
               
               ## sum of stellar and companion radius
               rsmacomp=None, \
@@ -1250,6 +1250,7 @@ def eval_modl( \
               ##  1: minimal description of the execution
               ##  2: detailed description of the execution
               typeverb=1, \
+              **kwargs,
              ):
     '''
     Calculate the flux of a system of potentially lensing and transiting stars, planets, and compact objects.
@@ -1265,6 +1266,7 @@ def eval_modl( \
 
     # copy locals (inputs) to the global object
     dictinpt = dict(locals())
+    dictinpt.update(kwargs)
     for attr, valu in dictinpt.items():
         if '__' not in attr and attr != 'gdat':
             setattr(gdat, attr, valu)
@@ -1282,18 +1284,42 @@ def eval_modl( \
     if gdat.typeverb > 1:
         print('Estimating the light curve via eval_modl()...')
         
+    if gdat.pericomp is None:
+        gdat.pericomp = np.array([1.])
+    if gdat.epocmtracomp is None:
+        gdat.epocmtracomp = np.array([0.])
+
     if isinstance(gdat.pericomp, list):
         gdat.pericomp = np.array(gdat.pericomp)
 
     if isinstance(gdat.epocmtracomp, list):
         gdat.epocmtracomp = np.array(gdat.epocmtracomp)
 
+    if gdat.radicomp is None:
+        gdat.radicomp = np.array([0.1])
     if isinstance(gdat.radicomp, list):
         gdat.radicomp = np.array(gdat.radicomp)
+
+    if gdat.rsmacomp is None:
+        gdat.rsmacomp = np.array([0.1])
+    if isinstance(gdat.rsmacomp, list):
+        gdat.rsmacomp = np.array(gdat.rsmacomp)
+
+    if gdat.cosicomp is None:
+        gdat.cosicomp = np.array([0.])
+    if isinstance(gdat.cosicomp, list):
+        gdat.cosicomp = np.array(gdat.cosicomp)
+
+    gdat.dictfact = tdpy.retr_factconv()
 
     if isinstance(gdat.rsmacomp, list):
         gdat.rsmacomp = np.array(gdat.rsmacomp)
 
+    if gdat.rratcomp is None:
+        if gdat.radistar is None:
+            gdat.rratcomp = np.array([0.1])
+        else:
+            gdat.rratcomp = gdat.radicomp / gdat.radistar / gdat.dictfact['rsre']
     if isinstance(gdat.rratcomp, list):
         gdat.rratcomp = np.array(gdat.rratcomp)
     
@@ -1314,17 +1340,21 @@ def eval_modl( \
 
     if isinstance(gdat.sinwcomp, list):
         gdat.sinwcomp = np.array(gdat.sinwcomp)
+
+    for name in ['diffphasineg', 'diffphasintr', 'diffphaspcur']:
+        valu = getattr(gdat, name)
+        if valu is not None and isinstance(valu, list):
+            setattr(gdat, name, np.array(valu, dtype=float))
     
     gdat.numbcomp = gdat.pericomp.size
     gdat.indxcomp = np.arange(gdat.numbcomp)
     
-    gdat.dictfact = tdpy.retr_factconv()
-    
     if gdat.rratcomp is not None:
-        gdat.radicomp = gdat.rratcomp
-        if gdat.radistar is not None:
-            raise Exception('')
+        if gdat.radicomp is None:
+            gdat.radicomp = gdat.rratcomp * gdat.radistar * gdat.dictfact['rsre']
     else:
+        if gdat.radistar is None:
+            gdat.radistar = 1.0
         gdat.rratcomp = gdat.radicomp / gdat.radistar / gdat.dictfact['rsre']
         if gdat.typeverb > 1:
             print('gdat.radistar')
@@ -1739,7 +1769,9 @@ def eval_modl( \
     gdat.dcyctrantotlcomp = gdat.duratrantotlcomp / gdat.pericomp / 24.
 
     dictefes['duratrantotlcomp'] = gdat.duratrantotlcomp
-    dictefes['dcyctrantotlcomp'] = gdat.duratrantotlcomp
+    dictefes['dcyctrantotlcomp'] = gdat.dcyctrantotlcomp
+    dictefes['duratrantotl'] = np.asarray(gdat.duratrantotlcomp)
+    dictefes['dcyctrantotl'] = np.asarray(gdat.dcyctrantotlcomp)
         
     if gdat.typesyst == 'CompactObjectStellarCompanion':
         if gdat.typemodllens == 'gaus':
@@ -2237,7 +2269,7 @@ def eval_modl( \
                         
                         # array of durations of phase oversampled for the total transit
                         if gdat.typesyst.startswith('PlanetarySystemWithRings'):
-                            gdat.phastrantotl = 2. * gdat.dcycatrantotlcomp
+                            gdat.phastrantotl = 2. * gdat.dcyctrantotlcomp
                         else:
                             gdat.phastrantotl = gdat.dcyctrantotlcomp
                         
@@ -2260,42 +2292,56 @@ def eval_modl( \
                             phasingr = gdat.phastrantotl / 2.
                             deltphasineghalf = np.zeros(gdat.numbcomp)
                         
+                        step_phaspcur = float(np.asarray(gdat.diffphaspcur).reshape(-1)[0]) if np.asarray(gdat.diffphaspcur).size else 0.02
+                        step_diffphasineg = float(np.asarray(gdat.diffphasineg).reshape(-1)[0]) if np.asarray(gdat.diffphasineg).size else 0.0
+                        step_diffphasintr = float(np.asarray(gdat.diffphasintr).reshape(-1)[0]) if np.asarray(gdat.diffphasintr).size else 0.0
+
+                        def _safe_arange(start, stop, step):
+                            start = float(np.asarray(start).reshape(()))
+                            stop = float(np.asarray(stop).reshape(()))
+                            step = float(np.asarray(step).reshape(()))
+                            if not np.isfinite(start) or not np.isfinite(stop) or not np.isfinite(step):
+                                return np.array([], dtype=float)
+                            if step == 0 or (stop - start) * step <= 0:
+                                return np.array([], dtype=float)
+                            return np.arange(start, stop, step)
+
                         # before ingress
-                        gdat.listphaseval[j] = [np.arange(-0.25, -phasingr[j] - deltphasineghalf[j], gdat.diffphaspcur)]
+                        gdat.listphaseval[j] = [_safe_arange(-0.25, -phasingr[j] - deltphasineghalf[j], step_phaspcur)]
                         
                         # ingress
                         if gdat.boolsystpsys and np.isfinite(gdat.duratranfullcomp[j]):
-                            gdat.listphaseval[j].append(np.arange(-phasingr[j] - deltphasineghalf[j], -phasingr[j] + deltphasineghalf[j], gdat.diffphasineg))
+                            gdat.listphaseval[j].append(_safe_arange(-phasingr[j] - deltphasineghalf[j], -phasingr[j] + deltphasineghalf[j], step_diffphasineg))
                         
                         # in primary transit, after ingress, before primary transit egress
-                        gdat.listphaseval[j].append(np.arange(-phasingr[j] + deltphasineghalf[j], phasingr[j] - deltphasineghalf[j], gdat.diffphasintr[j]))
+                        gdat.listphaseval[j].append(_safe_arange(-phasingr[j] + deltphasineghalf[j], phasingr[j] - deltphasineghalf[j], step_diffphasintr))
                         
                         # primary transit egress
                         if gdat.boolsystpsys and np.isfinite(gdat.duratranfullcomp[j]):
-                            gdat.listphaseval[j].append(np.arange(phasingr[j] - deltphasineghalf[j], phasingr[j] + deltphasineghalf[j], gdat.diffphasineg))
+                            gdat.listphaseval[j].append(_safe_arange(phasingr[j] - deltphasineghalf[j], phasingr[j] + deltphasineghalf[j], step_diffphasineg))
                         
                         if gdat.typebrgtcomp != 'dark':
                             # after primary transit egress, before secondary eclipse ingress
-                            gdat.listphaseval[j].append(np.arange(phasingr[j] + deltphasineghalf[j], 0.5 - phasingr[j] - deltphasineghalf[j], gdat.diffphaspcur))
+                            gdat.listphaseval[j].append(_safe_arange(phasingr[j] + deltphasineghalf[j], 0.5 - phasingr[j] - deltphasineghalf[j], step_phaspcur))
                         
                             # secondary eclipse ingress
                             if gdat.boolsystpsys and np.isfinite(gdat.duratranfullcomp[j]):
-                                gdat.listphaseval[j].append(np.arange(0.5 - phasingr[j] - deltphasineghalf[j], 0.5 - phasingr[j] + deltphasineghalf[j], gdat.diffphasineg))
+                                gdat.listphaseval[j].append(_safe_arange(0.5 - phasingr[j] - deltphasineghalf[j], 0.5 - phasingr[j] + deltphasineghalf[j], step_diffphasineg))
                                                            
                             # in secondary eclipse
-                            gdat.listphaseval[j].append(np.arange(0.5 - phasingr[j] + deltphasineghalf[j], 0.5 + phasingr[j] - deltphasineghalf[j], gdat.diffphasintr[j]))
+                            gdat.listphaseval[j].append(_safe_arange(0.5 - phasingr[j] + deltphasineghalf[j], 0.5 + phasingr[j] - deltphasineghalf[j], step_diffphasintr))
                                                            
                             # secondary eclipse egress
                             if gdat.boolsystpsys and np.isfinite(gdat.duratranfullcomp[j]):
-                                gdat.listphaseval[j].append(np.arange(0.5 + phasingr[j] - deltphasineghalf[j], 0.5 + phasingr[j] + deltphasineghalf[j], gdat.diffphasineg))
+                                gdat.listphaseval[j].append(_safe_arange(0.5 + phasingr[j] - deltphasineghalf[j], 0.5 + phasingr[j] + deltphasineghalf[j], step_diffphasineg))
                         
                             # after secondary eclipse
-                            gdat.listphaseval[j].append(np.arange(0.5 + phasingr[j] + deltphasineghalf[j], 0.75 + gdat.diffphaspcur, gdat.diffphaspcur))
+                            gdat.listphaseval[j].append(_safe_arange(0.5 + phasingr[j] + deltphasineghalf[j], 0.75 + step_phaspcur, step_phaspcur))
                         
                         else:
                             
                             # other times
-                            gdat.listphaseval[j].append(np.arange(phasingr[j] + deltphasineghalf[j], 0.75 + gdat.diffphaspcur, gdat.diffphaspcur))
+                            gdat.listphaseval[j].append(_safe_arange(phasingr[j] + deltphasineghalf[j], 0.75 + step_phaspcur, step_phaspcur))
 
                         gdat.listphaseval[j] = np.concatenate(gdat.listphaseval[j])
                     else:
@@ -3062,15 +3108,15 @@ def retr_strgtitl(dictefesinpt, listnamevarbcomp, dictlabl):
     
     strgtitl = ''
     if 'radistar' in dictefesinpt and dictefesinpt['radistar'] is not None:
-        strgtitl += '$R_*$ = %.1f $R_\odot$' % dictefesinpt['radistar']
+        strgtitl += r'$R_*$ = %.1f $R_\odot$' % dictefesinpt['radistar']
     if dictefesinpt['typesyst'] == 'CompactObjectStellarCompanion' and 'massstar' in dictefesinpt:
         if len(strgtitl) > 0 and strgtitl[-2:] != ', ':
             strgtitl += ', '
-        strgtitl += '$M_*$ = %.1f $M_\odot$' % dictefesinpt['massstar']
+        strgtitl += r'$M_*$ = %.1f $M_\odot$' % dictefesinpt['massstar']
     
     for kk, name in enumerate(listnamevarbcomp):
         
-        if name == 'epocmtracomp' or name == 'typebrgtcomp' or (not name[:-1] + 'p' in dictefesinpt and name in dictefesinpt):
+        if name == 'epocmtracomp' or name == 'typebrgtcomp':
             continue
         
         if name.startswith('epocmtracom'):
@@ -3081,26 +3127,24 @@ def retr_strgtitl(dictefesinpt, listnamevarbcomp, dictlabl):
 
         if name in dictefesinpt:
             nameprim = name
+        elif name == 'radicomp' and 'rratcomp' in dictefesinpt:
+            nameprim = 'rratcomp'
+        elif name == 'rratcomp' and 'radicomp' in dictefesinpt:
+            nameprim = 'radicomp'
         elif len(name.split('com')) == 2 and name.split('com')[1].isnumeric():
             nameprim = name.split('com')[0] + 'comp'
         else:
-            print('name')
-            print(name)
-            raise Exception('')
+            continue
 
-        if dictefesinpt[nameprim] is None:
-            print('')
-            print('')
-            print('')
-            print('dictefesinpt[typesyst]')
-            print(dictefesinpt['typesyst'])
-            print('name')
-            print(name)
-            raise Exception('dictefesinpt[name] is None')
+        if nameprim not in dictefesinpt or dictefesinpt[nameprim] is None:
+            continue
 
-        #for j, valu in enumerate(dictefesinpt[nameprim]):
-            
-        valu = dictefesinpt[nameprim][int(name[-1])]
+        valu = dictefesinpt[nameprim]
+        if isinstance(valu, (list, tuple, np.ndarray)):
+            if np.asarray(valu).size > 0:
+                valu = np.asarray(valu).reshape(-1)[0]
+            else:
+                continue
 
         if len(strgtitl) > 0 and strgtitl[-2:] != ', ':
             strgtitl += ', '

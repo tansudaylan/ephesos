@@ -145,6 +145,12 @@ for k in range(len(listtypesyst)):
     #    dictefesinpt['%scomp' % namevarb] = dictnico['dictpopl']['comp'][strgpoplcomptotl]['%scomp' % namevarb][0][indx]
     
     dictefesinpt['strgextn'] = '%s_%04d' % (listtypesyst[k], 0)
+    dictefesinpt['pericomp'] = np.asarray(dictnico['dictpopl']['comp'][strgpoplcomptotl]['pericomp'][0][:1])
+    dictefesinpt['epocmtracomp'] = np.asarray([0.])
+    dictefesinpt['rsmacomp'] = np.asarray([0.1])
+    dictefesinpt['cosicomp'] = np.asarray([0.])
+    dictefesinpt['radicomp'] = np.asarray([0.1])
+    dictefesinpt['radistar'] = 1.
     
     # generate light curve
     dictefesoutp = ephesos.eval_modl(time, listtypesyst[k], **dictefesinpt)

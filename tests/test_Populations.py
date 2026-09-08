@@ -29,7 +29,13 @@ np.random.seed(2)
 typepoplsyst = 'Synthetic'
 
 # compound typesyst
-typesystCompound = sys.argv[1]
+for arg in sys.argv[1:]:
+    if arg.startswith('-') or arg.endswith('.py'):
+        continue
+    typesystCompound = arg
+    break
+else:
+    typesystCompound = 'PlanetarySystem_Single'
 typesyst = typesystCompound.split('_')[0]
 
 pathpoplanls = pathpopl + typesystCompound + '/'
@@ -199,7 +205,10 @@ if cade > 5e-3 * minmperi:
 #    # maximum time
 #    maxmtime = 0.5 * 1.5 * duratrantotl
 # time axis
-time = np.arange(minmtime, maxmtime, cade)
+if not np.isfinite(minmtime) or not np.isfinite(maxmtime) or np.isclose(minmtime, maxmtime, rtol=0., atol=1e-15):
+    time = np.array([0.5 * (minmtime + maxmtime)]) if np.isfinite(minmtime) and np.isfinite(maxmtime) else np.array([0.])
+else:
+    time = np.arange(minmtime, maxmtime, cade)
 
 listnamevarb = ['peri', 'epocmtra', 'rsma', 'cosi']
 if boolsystpsys:
