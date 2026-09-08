@@ -43,6 +43,21 @@ def retr_listtypesyst():
     return listtypesyst
 
 
+def _normalize_alpha_series(values):
+    """Normalize a segment alpha series to [0, 1] without divide-by-zero warnings."""
+
+    arr = np.asarray(values, dtype=float)
+    if arr.size == 0:
+        return arr.copy()
+
+    amin = np.amin(arr)
+    amax = np.amax(arr)
+    if np.isclose(amax, amin):
+        return np.zeros_like(arr, dtype=float)
+
+    return (arr - amin) / (amax - amin)
+
+
 def retr_boolgridouts(gdat, j, typecoor, typeoccu='comp'):
     '''
     Return a grid of Booleans on either grid indicating which prid points are not occulted by the companion or the primary
@@ -2781,8 +2796,7 @@ def eval_modl( \
 
             for ou in gdat.indxsegmfade:
                 gdat.listalphline[j][ou] = np.mean(gdat.dictvarborbt['anomtrue'][gdat.indxtimesegmfade[ou], j])
-            gdat.listalphline[j] -= np.amin(gdat.listalphline[j])
-            gdat.listalphline[j] /= np.amax(gdat.listalphline[j])
+            gdat.listalphline[j] = _normalize_alpha_series(gdat.listalphline[j])
             
             #for t in gdat.indxtime:
             #    gdat.listsegm[j].append([gdat.dictvarborbt['posicompgridprim'][t, j, 0], gdat.dictvarborbt['posicompgridprim'][t, j, 1]])
