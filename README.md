@@ -1,26 +1,40 @@
 # Ephesos
 
-## Introduction
+## Scientific purpose
+Ephesos is a light-curve forward-modeling framework for planetary and stellar systems. It computes the relative flux signal from a geometric and brightness model of a system and is intended for transparent model evaluation and diagnostic visualization.
 
-Integrating over the sky-projected brightness distribution of bodies in a system, `ephesos.eval_modl()` generates the relative flux light curve of a system of stars, compact objects, and planets. You can see an example model evaluation below, where a hot Jupiter transits a Sun-like star.
+The core scientific workflow is built around evaluating the sky-projected brightness distribution of bodies in a system via the `ephesos.eval_modl()` entry point, enabling investigations of transits, star spots, occultations, phase curves, eclipse mapping, microlensing, and reflected light.
 
-![in this plot](https://github.com/tdaylan/ephesus/blob/master/visuals/lcur.png)
+## Repository role in the ecosystem
+Ephesos is a scientific modeling library within the wider astrophysical analysis stack. It complements the time-domain and cataloging workflows by making the forward model explicit and inspectable, so researchers can trace how physical assumptions move into the final light curve.
 
-Ephesos can be used to model the following features in light curves:
+## Installation
 
-- dimming due to transits of stellar companions, planets, and their moons,
-- variations due to star spots and faculae,
-- occultations between planets and such stellar surface features,
-- phase variations due to tidal deforming, Doppler beaming, and surface temperature distribution of the companion,
-- ingress and egress anomalies during the eclipse of a companion due to strong gradients in its the surface brightness distribution, which is also known as eclipse mapping,
-- microlensing due to a compact companion such as a white dwarf, neutron star, or black hole,
-- reflected light from a companion.
+```bash
+cd /path/to/ephesos
+pip install -e .
+```
 
+## Minimal usage
 
-## Model
-### Limb darkening
-Stars manifest a darkening towards their limbs beyond that expected from Lambertian scattering. Even though simulations of stellar atmospheres allow the prediction of the limb darkening, the failure of these models to accurately interpolate stellar parameters can significantly bias inference when a wrong limb darkening model is used.
+```python
+import ephesos
 
+# The primary forward-modeling entry point is exposed through the package.
+# Example usage depends on the target system configuration and is typically
+# constructed through the model setup functions in the package.
+```
 
-You can find example uses under the examples folder.
+## Model diagnostics
+A useful forward-model run should make the following visible:
+
+- the input system geometry and stellar properties;
+- the intermediate brightness model or limb-darkening assumptions;
+- the resulting relative flux light curve;
+- any residuals or model comparison diagnostics.
+
+This makes the scientific assumptions inspectable without having to reverse-engineer the source code.
+
+## Current maintenance status
+Ephesos remains a research-grade scientific library rather than a broad generic astronomy toolkit. The supported package surface is the importable model and evaluation functions, while legacy analysis scripts and notebooks are kept as historical or exploratory material unless they are explicitly migrated into the active API.
 
