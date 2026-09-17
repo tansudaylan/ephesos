@@ -505,40 +505,34 @@ def func_anom(anommean, anomecce, ecce):
 
 def retr_anomdist(phas, smax, ecce, booldiag=False):
     '''
-    Calculate the mean, eccentric, true anomaly, and distance-to-planet from phase, orbits's semi-major axis and eccentricity
+    Calculate anomalies and separation from a phase measured from periastron.
     '''
-    
-    ecce = 0.
+
+    if np.any(np.abs(ecce) >= 1.):
+        raise ValueError('Eccentricity must satisfy abs(ecce) < 1 for a bound Keplerian orbit.')
 
     # Mean anomaly
     anommean = 2. * np.pi * phas
-  
-    # eccentric anomaly
-    anomecce = anommean
-    errr = abs(func_anom(anommean, anomecce, ecce))
-    
-    # temp -- this part is not well tested because it is not entering the while loop
-    while errr > 1e-10:
-        funcanom = func_anom(anommean, anomecce, ecce)
-        funcanomderi = funcanomderi(anomecce, ecce)
-        
-        # trial eccentric anomaly
-        anomecce = anomecce - funcanom / funcanomderi
-        
-        # g(E) at the trial eccentric anomaly
-        errr = abs(func_anom(anommean, anomecce, ecce))
+
+    # Newton iterations solve E - e sin(E) = M.
+    anomecce = anommean + ecce * np.sin(anommean)
+    for _ in range(100):
+        residual = func_anom(anommean, anomecce, ecce)
+        deriv = funcanomderi(anomecce, ecce)
+        anomecce -= residual / deriv
+        if np.all(np.abs(residual) < 1e-12):
+            break
+    else:
+        raise RuntimeError('Kepler solver did not converge.')
         
     # distance from the  star
     dist = smax * (1. - ecce * np.cos(anomecce))
     
     # true anomaly
-    anomtrueinit = np.arccos((np.cos(anomecce) - ecce) / (1. - ecce * np.cos(anomecce)))
-    if anomecce > np.pi:
-        anomtrue = anomtrueinit + 2. * abs(np.pi - anomtrueinit)
-    elif anomecce < 0.:
-        anomtrue = -anomtrueinit
-    else:
-        anomtrue = anomtrueinit
+    anomtrue = 2. * np.arctan2(
+        np.sqrt(1. + ecce) * np.sin(anomecce / 2.),
+        np.sqrt(1. - ecce) * np.cos(anomecce / 2.),
+    )
 
     if booldiag:
         if ecce < 0.01:
