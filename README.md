@@ -13,7 +13,10 @@ Ephesos is a scientific modeling library within the wider astrophysical analysis
 ```bash
 cd /path/to/ephesos
 pip install -e .
+export EPHESOS_PATH=/path/to/ephesos
 ```
+
+`EPHESOS_PATH` identifies the repository root. Runtime inputs belong under `data/` and generated pipeline outputs belong under `visuals/`. Both directories are ignored by Git.
 
 ## Minimal usage
 

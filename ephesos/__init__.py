@@ -7,5 +7,6 @@ smoke tests.
 """
 
 from .main import *  # noqa: F401,F403
+from .paths import get_data_path, get_repository_path, get_visuals_path
 
 __all__ = [name for name in globals() if not name.startswith('_')]

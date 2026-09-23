@@ -39,4 +39,4 @@ include = ["ephesos*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-python_files = ["test_diff.py", "test_eval_modl.py", "test_grid.py", "test_import.py"]
+python_files = ["test*.py"]
