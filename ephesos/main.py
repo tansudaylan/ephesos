@@ -22,7 +22,6 @@ import astropy.timeseries
 import astroquery
 import astroquery.mast
 
-import miletos
 import nicomedia
 import chalcedon
 import tdpy
@@ -2817,6 +2816,8 @@ def eval_modl( \
         dictefes['rateppcr'] = dictefes['numbppcr'] / (gdat.time[-1] - gdat.time[0])
     
         if gdat.boolplotdistcomp:
+            import miletos
+
             gdat.timeoffs = tdpy.retr_offstime(gdat.time)
             
             dictmodl = dict()
@@ -2896,7 +2897,8 @@ def plot_tser_dictefes( \
                        typeplotback='black', \
 
                       ):
-    
+
+    import miletos
 
     if typeplotback == 'white':
         colrbkgd = 'white'

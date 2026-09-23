@@ -26,11 +26,13 @@ dependencies = [
   "astropy",
   "astroquery",
   "tqdm",
-  "miletos",
   "nicomedia",
   "tdpy",
   "chalcedon"
 ]
+
+[project.optional-dependencies]
+plotting = ["miletos"]
 
 [tool.setuptools.packages.find]
 include = ["ephesos*"]
