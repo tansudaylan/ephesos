@@ -2778,14 +2778,16 @@ def eval_modl( \
             gdat.indxtimesegmfade[ou] = np.where(ou == gdat.indxsegmfadetime)[0]
             
         gdat.listalphline = [np.empty(gdat.numbsegmfade) for j in gdat.indxcomp]
-        print('gdat.boolintp')
-        print(gdat.boolintp)
+        if gdat.typeverb > 1:
+            print('gdat.boolintp')
+            print(gdat.boolintp)
         for j in gdat.indxcomp:
-            
-            print('j')
-            print(j)
-            print('gdat.dictvarborbt[anomtrue][:, j]')
-            summgene(gdat.dictvarborbt['anomtrue'][:, j])
+
+            if gdat.typeverb > 1:
+                print('j')
+                print(j)
+                print('gdat.dictvarborbt[anomtrue][:, j]')
+                summgene(gdat.dictvarborbt['anomtrue'][:, j])
 
             for ou in gdat.indxsegmfade:
                 gdat.listalphline[j][ou] = np.mean(gdat.dictvarborbt['anomtrue'][gdat.indxtimesegmfade[ou], j])

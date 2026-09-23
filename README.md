@@ -20,13 +20,15 @@ export EPHESOS_PATH=/path/to/ephesos
 
 ## Minimal usage
 
-```python
-import ephesos
+The runnable example evaluates a central transit with a three-day orbital period, a companion-to-star radius ratio of 0.1, a summed-radius-to-semimajor-axis ratio of 0.1, and quadratic limb darkening:
 
-# The primary forward-modeling entry point is exposed through the package.
-# Example usage depends on the target system configuration and is typically
-# constructed through the model setup functions in the package.
+```bash
+python examples/minimal_transit.py --typefileplot png
 ```
+
+![Ephesos deterministic transit-model prediction](examples/minimal_transit.png)
+
+The curve is a deterministic forward-model prediction under the stated assumptions. It contains no observed or randomly generated data. The example calls `ephesos.eval_modl()` directly and produces a 1.13% limb-darkened transit, exposing the input geometry and resulting relative flux in one inspectable calculation.
 
 ## Model diagnostics
 A useful forward-model run should make the following visible:
