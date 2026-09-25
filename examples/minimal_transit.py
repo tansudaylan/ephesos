@@ -37,8 +37,10 @@ def evaluate_transit() -> tuple[np.ndarray, np.ndarray]:
     return time_hours, result["rflx"][:, 0]
 
 
-def run_example(output_path: Path) -> tuple[np.ndarray, np.ndarray]:
-    """Evaluate and plot the analytic transit model."""
+def run_example(
+    output_path: Path, animation_path: Path | None = None
+) -> tuple[np.ndarray, np.ndarray]:
+    """Evaluate the transit model and write its figure and animation."""
 
     time_hours, relative_flux = evaluate_transit()
     figure, axis = plt.subplots(figsize=(7.2, 4.2), facecolor="white")
@@ -72,6 +74,16 @@ def run_example(output_path: Path) -> tuple[np.ndarray, np.ndarray]:
         facecolor="white",
     )
     plt.close(figure)
+
+    if animation_path is None:
+        animation_path = output_path.with_suffix(".gif")
+    ephesos.save_light_curve_animation(
+        time_hours,
+        relative_flux,
+        animation_path,
+        title="Central transit",
+        time_label="Time from mid-transit [hour]",
+    )
     return time_hours, relative_flux
 
 

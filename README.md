@@ -30,6 +30,17 @@ python examples/minimal_transit.py --typefileplot png
 
 The curve is a deterministic forward-model prediction under the stated assumptions. It contains no observed or randomly generated data. The example calls `ephesos.eval_modl()` directly and produces a 1.13% limb-darkened transit, exposing the input geometry and resulting relative flux in one inspectable calculation.
 
+Every maintained example writes a compact GIF animation without requiring an
+external data directory or a command-line animation tool:
+
+```bash
+python examples/minimal_transit.py
+python examples/arbitrary_occultor.py
+python examples/run_WhiteDwarf.py
+python examples/run_WASP43.py
+python examples/run_population.py
+```
+
 ## Model diagnostics
 A useful forward-model run should make the following visible:
 
