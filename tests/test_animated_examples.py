@@ -49,9 +49,7 @@ def test_notebook_code_is_current_and_valid(name):
     print(f"Reading from {path}...")
     notebook = json.loads(path.read_text())
     code = "\n".join(
-        "\n".join(cell["source"])
-        for cell in notebook["cells"]
-        if cell["cell_type"] == "code"
+        "\n".join(cell["source"]) for cell in notebook["cells"] if cell["cell_type"] == "code"
     )
 
     compile(code, str(path), "exec")

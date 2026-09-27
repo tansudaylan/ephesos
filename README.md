@@ -1,12 +1,16 @@
 # Ephesos
 
 ## Scientific purpose
-Ephesos is a light-curve forward-modeling framework for planetary and stellar systems. It computes the relative flux signal from a geometric and brightness model of a system and is intended for transparent model evaluation and diagnostic visualization.
+Ephesos is a light-curve forward-modeling framework for planetary and stellar
+systems. It computes relative flux from explicit geometry and brightness models.
 
-The core scientific workflow is built around evaluating the sky-projected brightness distribution of bodies in a system via the `ephesos.eval_modl()` entry point, enabling investigations of transits, star spots, occultations, phase curves, eclipse mapping, microlensing, and reflected light.
+The core workflow evaluates sky-projected brightness through `ephesos.eval_modl()`.
+The concise `ephesos.evaluate_transit_model()` interface covers deterministic
+single-companion transit calculations.
 
 ## Repository role in the ecosystem
-Ephesos is a scientific modeling library within the wider astrophysical analysis stack. It complements the time-domain and cataloging workflows by making the forward model explicit and inspectable, so researchers can trace how physical assumptions move into the final light curve.
+Ephesos is a scientific modeling library within the astrophysical analysis stack.
+It exposes how physical assumptions determine a modeled light curve.
 
 ## Installation
 
@@ -16,11 +20,14 @@ pip install -e .
 export EPHESOS_PATH=/path/to/ephesos
 ```
 
-`EPHESOS_PATH` identifies the repository root. Runtime inputs belong under `data/` and generated pipeline outputs belong under `visuals/`. Both directories are ignored by Git.
+`EPHESOS_PATH` identifies the repository root. Runtime inputs belong under `data/`.
+Generated pipeline outputs belong under `visuals/`. Git ignores both directories.
 
 ## Minimal usage
 
-The runnable example evaluates a central transit with a three-day orbital period, a companion-to-star radius ratio of 0.1, a summed-radius-to-semimajor-axis ratio of 0.1, and quadratic limb darkening:
+The runnable example evaluates a central transit with a three-day orbital period,
+a companion-to-star radius ratio of 0.1, a summed-radius-to-semimajor-axis ratio
+of 0.1, and quadratic limb darkening.
 
 ```bash
 python examples/minimal_transit.py --typefileplot png
@@ -28,10 +35,11 @@ python examples/minimal_transit.py --typefileplot png
 
 ![Ephesos deterministic transit-model prediction](examples/minimal_transit.png)
 
-The curve is a deterministic forward-model prediction under the stated assumptions. It contains no observed or randomly generated data. The example calls `ephesos.eval_modl()` directly and produces a 1.13% limb-darkened transit, exposing the input geometry and resulting relative flux in one inspectable calculation.
+The curve is a deterministic prediction under these assumptions. It contains no
+observed or randomly generated data. The model produces a 1.13% transit depth.
 
-Every maintained example writes a compact GIF animation without requiring an
-external data directory or a command-line animation tool:
+Every maintained example writes a compact GIF without external data or command-line
+animation tools.
 
 ```bash
 python examples/minimal_transit.py
@@ -41,16 +49,28 @@ python examples/run_WASP43.py
 python examples/run_population.py
 ```
 
+Single-system animations are written beside their scripts. Population animations
+are written under `examples/population_animations/`.
+
+## Reusable plotting
+
+`ephesos.save_light_curve_figure()` writes `png` output at 300 dots per inch or
+vector `pdf` output. It uses a white background by default and accepts
+`typeplotback="dark"`. `ephesos.save_light_curve_animation()` applies the same
+labels, colors, typography, and opaque legend to GIF output.
+
 ## Model diagnostics
 A useful forward-model run should make the following visible:
 
-- the input system geometry and stellar properties;
-- the intermediate brightness model or limb-darkening assumptions;
-- the resulting relative flux light curve;
-- any residuals or model comparison diagnostics.
+- the input system geometry and stellar properties
+- the intermediate brightness model or limb-darkening assumptions
+- the resulting relative flux light curve
+- any residuals or model comparison diagnostics
 
-This makes the scientific assumptions inspectable without having to reverse-engineer the source code.
+This makes the scientific assumptions directly inspectable.
 
 ## Current maintenance status
-Ephesos remains a research-grade scientific library rather than a broad generic astronomy toolkit. The supported package surface is the importable model and evaluation functions, while legacy analysis scripts and notebooks are kept as historical or exploratory material unless they are explicitly migrated into the active API.
+Ephesos remains a focused research-grade scientific library. Its supported surface
+consists of importable model, evaluation, and visualization functions. Regression
+tests cover legacy internals while maintained workflows move into package functions.
 

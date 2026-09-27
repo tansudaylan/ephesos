@@ -1,5 +1,6 @@
 import sys
 import os
+from pathlib import Path
 
 from tqdm import tqdm
 
@@ -26,6 +27,8 @@ import nicomedia
 import chalcedon
 import tdpy
 from tdpy import summgene
+
+from .visualization import save_frame_animation
 
 
 def retr_listtypesyst():
@@ -247,9 +250,6 @@ def make_imag(gdat, t, typecolr='real', j=None):
         if not boolexst:
             
             path = retr_pathanimfram(gdat, namevarbanim, t, 'imag', j)
-            
-            gdat.cmndmakeanim[namevarbanim] += ' %s' % path
-            gdat.cmnddeleimag[namevarbanim] += ' %s' % path
         
             figr, axis = plt.subplots(figsize=(6, 6))
             
@@ -402,9 +402,9 @@ def make_imag(gdat, t, typecolr='real', j=None):
             
             print('Writing to %s...' % path)
             if namevarbanim == 'posifrstphotlens' or namevarbanim == 'posisecophotlens':
-                plt.savefig(path, dpi=400)
+                plt.savefig(path, dpi=400, bbox_inches='tight')
             else:
-                plt.savefig(path, dpi=200)
+                plt.savefig(path, dpi=200, bbox_inches='tight')
             
             plt.close()
     
@@ -1225,7 +1225,7 @@ def eval_modl( \
               boolinclmercimaglfov=False, \
                 
               # type of plot background
-              typeplotback='black', \
+              typeplotback='white', \
 
               # type of light curve plot
               ## 'inst': inset
@@ -1403,8 +1403,12 @@ def eval_modl( \
 
     gdat.boolsystpsys = gdat.typesyst.startswith('PlanetarySystem')
     
-    if gdat.typeplotback == 'black':
+    if gdat.typeplotback in ('black', 'dark'):
         plt.style.use('dark_background')
+    elif gdat.typeplotback == 'white':
+        plt.style.use('default')
+    else:
+        raise ValueError("typeplotback must be 'white' or 'dark'")
         
     if gdat.boolcalcdistcomp:
         dictefes['distcomp'] = np.empty((gdat.numbcomp, gdat.numbcomp))
@@ -1630,8 +1634,6 @@ def eval_modl( \
             gdat.indxframthis = 0
 
             gdat.pathgiff = dict()
-            gdat.cmndmakeanim = dict()
-            gdat.cmnddeleimag = dict()
         
         if gdat.boolmakeanim:
             if gdat.boolmakeanimsbrt:
@@ -2399,15 +2401,14 @@ def eval_modl( \
                 for a in range(numbitermoon):
                     
                     if gdat.boolmakeanim:
+                        if gdat.typefileplot != 'png':
+                            raise ValueError("Animations require typefileplot='png'.")
                         for namevarbanim in gdat.listnamevarbfram:
                             gdat.pathgiff[namevarbanim] = gdat.pathvisu + '%s%s.gif' % (namevarbanim, gdat.strgextn)
-                            gdat.cmndmakeanim[namevarbanim] = 'convert -delay 5 -density 200'
-                            gdat.cmnddeleimag[namevarbanim] = 'rm'
-                        
-                            pathbasedele = retr_pathrootanimfram(gdat, namevarbanim)
-                            cmnd = 'rm %s*' % pathbasedele
-                            print(cmnd)
-                            os.system(cmnd)
+                            pathroot = Path(retr_pathrootanimfram(gdat, namevarbanim))
+                            pattern = '%s_*.%s' % (pathroot.name, gdat.typefileplot)
+                            for pathframe in pathroot.parent.glob(pattern):
+                                pathframe.unlink()
                     
                     # evaluate the brightness as a interpolate 
                     if gdat.boolintp:
@@ -2440,13 +2441,12 @@ def eval_modl( \
                         
                         for namevarbanim in gdat.listnamevarbfram:
                             if not os.path.exists(gdat.pathgiff[namevarbanim]):
-                                # make the animation
-                                gdat.cmndmakeanim[namevarbanim] += ' %s' % gdat.pathgiff[namevarbanim]
-                                print('Writing to %s...' % gdat.pathgiff[namevarbanim])
-                                os.system(gdat.cmndmakeanim[namevarbanim])
-                                
-                                # delete images
-                                os.system(gdat.cmnddeleimag[namevarbanim])
+                                pathroot = Path(retr_pathrootanimfram(gdat, namevarbanim))
+                                pattern = '%s_*.%s' % (pathroot.name, gdat.typefileplot)
+                                pathframes = sorted(pathroot.parent.glob(pattern))
+                                save_frame_animation(pathframes, gdat.pathgiff[namevarbanim])
+                                for pathframe in pathframes:
+                                    pathframe.unlink()
 
                 if gdat.boolintp:
                     
@@ -2896,7 +2896,7 @@ def plot_tser_dictefes( \
                        dictefes, strgextninpt, lablunittime, typetarg='', typefileplot='png', \
                        
                        # type of plot background
-                       typeplotback='black', \
+                       typeplotback='white', \
 
                       ):
 
@@ -2905,9 +2905,11 @@ def plot_tser_dictefes( \
     if typeplotback == 'white':
         colrbkgd = 'white'
         colrdraw = 'black'
-    elif typeplotback == 'black':
+    elif typeplotback in ('black', 'dark'):
         colrbkgd = 'black'
         colrdraw = 'white'
+    else:
+        raise ValueError("typeplotback must be 'white' or 'dark'")
     
     dictlabl = dict()
     dictlabl['root'] = dict()

@@ -1,34 +1,54 @@
 Ephesos
-====
+========
 
-Introduction
-----
+Purpose
+-------
 
-A large fraction of light sources in the sky is time-variable. Their variability contains valuable information about their nature.
+Ephesos evaluates deterministic forward models for planetary and stellar light
+curves. The package exposes the model geometry, brightness assumptions, and
+relative-flux prediction for inspection and reuse.
 
-Ephesos photodynamically calculates the total brightness of a system of stars, compact objects, planets, and moons as a function of time. The stars can potentially have time-variability due to stellar magnetism in the form of spots, faculae, and flares. It can model photometric, radial velocity, and astrometric time-series data typically collected in astronomy.
+Installation
+------------
 
-Ephesos derives its name from the ancient city of Ephesos on the western coast of Anatolia.
+.. code-block:: bash
 
+    pip install -e .
+    export EPHESOS_PATH=/path/to/ephesos
 
-Usage
-----
-.. code-block::
-    pip install ephesos
-    ephesos
+Transit evaluation
+------------------
 
+.. code-block:: python
 
-Modeling a transiting hot Jupiter
-~~~~
+    import numpy as np
+    import ephesos
 
+    time_days = np.linspace(-0.1, 0.1, 201)  # [day]
+    relative_flux = ephesos.evaluate_transit_model(
+         time_days,
+         period_days=3.0,
+         radius_ratio=0.1,
+         summed_radius_to_semimajor_axis=0.1,
+    )
 
-Modeling a black hole transiting a Sun-like star
-~~~~
+Visualization
+-------------
 
+``save_light_curve_figure`` writes a focused ``png`` or ``pdf`` figure.
+``save_light_curve_animation`` writes a compact GIF. Both functions use a white
+background by default and accept ``typeplotback="dark"``.
 
+Examples
+--------
 
-API
-----
+.. code-block:: bash
+
+    python examples/minimal_transit.py --typefileplot png
+    python examples/arbitrary_occultor.py
+    python examples/run_WhiteDwarf.py
+    python examples/run_WASP43.py
+    python examples/run_population.py
 
 
 

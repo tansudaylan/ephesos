@@ -13,19 +13,12 @@ def run_example(output_path: Path) -> tuple[np.ndarray, np.ndarray]:
     """Evaluate and animate a deep white-dwarf transit."""
 
     time_minutes = np.linspace(-12.0, 12.0, 241)  # [minute]
-    result = ephesos.eval_modl(
+    relative_flux = ephesos.evaluate_transit_model(
         time_minutes / 1440.0,
-        "PlanetarySystem",
-        pericomp=np.array([0.8]),  # [day]
-        epocmtracomp=np.array([0.0]),  # [day]
-        rsmacomp=np.array([0.015]),
-        cosicomp=np.array([0.0]),
-        rratcomp=np.array([0.55]),
-        typelmdk="quad",
-        booldiag=False,
-        typeverb=0,
+        period_days=0.8,  # [day]
+        radius_ratio=0.55,
+        summed_radius_to_semimajor_axis=0.015,
     )
-    relative_flux = result["rflx"][:, 0]
     ephesos.save_light_curve_animation(
         time_minutes,
         relative_flux,

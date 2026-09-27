@@ -13,19 +13,14 @@ def run_example(output_path: Path) -> tuple[np.ndarray, np.ndarray]:
     """Evaluate and animate the inclined-ring occultor light curve."""
 
     time_hours = np.linspace(-5.0, 5.0, 241)  # [hour]
-    result = ephesos.eval_modl(
+    relative_flux = ephesos.evaluate_transit_model(
         time_hours / 24.0,
-        "PlanetarySystemWithRingsInclinedVertical",
-        pericomp=np.array([4.0]),  # [day]
-        epocmtracomp=np.array([0.0]),  # [day]
-        rsmacomp=np.array([0.12]),
-        cosicomp=np.array([0.03]),
-        rratcomp=np.array([0.09]),
-        typelmdk="quad",
-        booldiag=False,
-        typeverb=0,
+        period_days=4.0,  # [day]
+        radius_ratio=0.09,
+        summed_radius_to_semimajor_axis=0.12,
+        cosine_inclination=0.03,
+        system_type="PlanetarySystemWithRingsInclinedVertical",
     )
-    relative_flux = result["rflx"][:, 0]
     ephesos.save_light_curve_animation(
         time_hours,
         relative_flux,

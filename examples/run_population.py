@@ -21,22 +21,17 @@ def run_example(output_directory: Path) -> list[Path]:
     )
     output_paths = []
     for name, period_days, radius_ratio, cosine_inclination in systems:
-        result = ephesos.eval_modl(
+        relative_flux = ephesos.evaluate_transit_model(
             time_hours / 24.0,
-            "PlanetarySystem",
-            pericomp=np.array([period_days]),  # [day]
-            epocmtracomp=np.array([0.0]),  # [day]
-            rsmacomp=np.array([0.1]),
-            cosicomp=np.array([cosine_inclination]),
-            rratcomp=np.array([radius_ratio]),
-            typelmdk="quad",
-            booldiag=False,
-            typeverb=0,
+            period_days=period_days,  # [day]
+            radius_ratio=radius_ratio,
+            summed_radius_to_semimajor_axis=0.1,
+            cosine_inclination=cosine_inclination,
         )
         output_path = output_directory / f"population_{name}.gif"
         ephesos.save_light_curve_animation(
             time_hours,
-            result["rflx"][:, 0],
+            relative_flux,
             output_path,
             title=f"Population member: {name}",
             time_label="Time from mid-transit [hour]",

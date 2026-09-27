@@ -2,7 +2,8 @@ import numpy as np
 import os, sys
 
 import matplotlib as mpl
-mpl.use('agg')
+
+mpl.use("agg")
 import matplotlib.pyplot as plt
 
 import nicomedia
@@ -12,324 +13,327 @@ from tdpy import summgene
 import tdpy
 
 
-'''
+"""
 Compute the relative flux light curves of systems of bodies drawn from a population model
-'''
+"""
 
 # path of the folder for visuals
-pathbase = os.environ['EPHESOS_DATA_PATH'] + '/'
-pathpopl = pathbase + 'Populations/'
+pathbase = os.environ["EPHESOS_DATA_PATH"] + "/"
+pathpopl = pathbase + "Populations/"
 
 # fix the seed
 np.random.seed(2)
 
 # type of the population of systems
 ## TESS 2-min target list during the nominal mission
-#typepoplsyst = 'TESS_PrimaryMission_2min'
-typepoplsyst = 'Synthetic'
+# typepoplsyst = 'TESS_PrimaryMission_2min'
+typepoplsyst = "Synthetic"
 
 # compound typesyst
 for arg in sys.argv[1:]:
-    if arg.startswith('-') or arg.endswith('.py'):
+    if arg.startswith("-") or arg.endswith(".py"):
         continue
     typesystCompound = arg
     break
 else:
-    typesystCompound = 'PlanetarySystem_Single'
-typesyst = typesystCompound.split('_')[0]
+    typesystCompound = "PlanetarySystem_Single"
+typesyst = typesystCompound.split("_")[0]
 
-pathpoplanls = pathpopl + typesystCompound + '/'
-print('typesyst')
+pathpoplanls = pathpopl + typesystCompound + "/"
+print("typesyst")
 print(typesyst)
 
 # number of systems
 numbsyst = 1000
 
-boolsystpsys = typesyst.startswith('PlanetarySystem')
-boolsystpsysring = typesyst.startswith('PlanetarySystemWithRings')
+boolsystpsys = typesyst.startswith("PlanetarySystem")
+boolsystpsysring = typesyst.startswith("PlanetarySystemWithRings")
 
-minmtime = 0.
-maxmtime = 2.
+minmtime = 0.0
+maxmtime = 2.0
 
 boolcalcdistcomp = False
 # number of systems to visualize via ephesos
 numbsystvisu = 2
 if boolsystpsys:
-    if typesyst== 'PlanetarySystemWithMoons':
+    if typesyst == "PlanetarySystemWithMoons":
         minmpericomp = 365
         minmnumbcompstar = 1
         maxmnumbcompstar = 1
-        typesamporbtcomp = 'peri'
-    elif typesyst== 'PlanetarySystem' or typesyst == 'PlanetarySystemWithNonKeplerianObjects':
+        typesamporbtcomp = "peri"
+    elif typesyst == "PlanetarySystem" or typesyst == "PlanetarySystemWithNonKeplerianObjects":
         minmpericomp = 0.4
-        if typesystCompound == 'PlanetarySystem_Single':
+        if typesystCompound == "PlanetarySystem_Single":
             minmnumbcompstar = 1
             maxmnumbcompstar = 1
-            typesamporbtcomp = 'peri'
-        elif typesystCompound == 'PlanetarySystemWithNonKeplerianObjects':
+            typesamporbtcomp = "peri"
+        elif typesystCompound == "PlanetarySystemWithNonKeplerianObjects":
             minmnumbcompstar = 1
             maxmnumbcompstar = 1
-            typesamporbtcomp = 'smax'
+            typesamporbtcomp = "smax"
             numbsystvisu = 0
-        elif typesystCompound == 'PlanetarySystem_Multiple':
+        elif typesystCompound == "PlanetarySystem_Multiple":
             boolcalcdistcomp = True
             numbsystvisu = 0
             minmnumbcompstar = 8
             maxmnumbcompstar = 10
-            typesamporbtcomp = 'peri'
+            typesamporbtcomp = "peri"
         else:
-            print('')
-            print('')
-            print('')
-            print('typesystCompound')
+            print("")
+            print("")
+            print("")
+            print("typesystCompound")
             print(typesystCompound)
-            raise Exception('typesystCompound undefined.')
+            raise Exception("typesystCompound undefined.")
     elif boolsystpsysring:
         minmpericomp = 0.4
         minmnumbcompstar = 1
         maxmnumbcompstar = 1
-        typesamporbtcomp = 'peri'
+        typesamporbtcomp = "peri"
     else:
-        print('')
-        print('')
-        print('')
-        print('typesyst')
+        print("")
+        print("")
+        print("")
+        print("typesyst")
         print(typesyst)
-        raise Exception('typesyst is undefined.')
+        raise Exception("typesyst is undefined.")
 else:
-    print('')
-    print('')
-    print('')
-    print('typesyst')
+    print("")
+    print("")
+    print("")
+    print("typesyst")
     print(typesyst)
-    raise Exception('typesyst is undefined.')
+    raise Exception("typesyst is undefined.")
 
-print('minmnumbcompstar')
+print("minmnumbcompstar")
 print(minmnumbcompstar)
-print('maxmnumbcompstar')
+print("maxmnumbcompstar")
 print(maxmnumbcompstar)
 # get dictionaries for stars, companions, and moons
-dictnico = nicomedia.retr_dictpoplstarcomp( \
-                                            typesyst, \
-                                            
-                                            typepoplsyst, \
-                                            booltoyysunn=True, \
-                                            typesamporbtcomp=typesamporbtcomp, \
-                                            minmnumbcompstar=minmnumbcompstar, \
-                                            maxmnumbcompstar=maxmnumbcompstar, \
-                                            #minmradicomp=10., \
-                                            minmmasscomp=10., \
-                                            minmpericomp=minmpericomp, \
-                                            maxmpericomp=2., \
-                                            maxmcosicomp=0.1, \
-                                            numbsyst=numbsyst, \
-                                          )
+dictnico = nicomedia.retr_dictpoplstarcomp(
+    typesyst,
+    typepoplsyst,
+    booltoyysunn=True,
+    typesamporbtcomp=typesamporbtcomp,
+    minmnumbcompstar=minmnumbcompstar,
+    maxmnumbcompstar=maxmnumbcompstar,  # minmradicomp=10., \
+    minmmasscomp=10.0,
+    minmpericomp=minmpericomp,
+    maxmpericomp=2.0,
+    maxmcosicomp=0.1,
+    numbsyst=numbsyst,
+)
 
 # parse nicomedia output
-dictpoplstar = dictnico['dictpopl']['star']
-dictpoplcomp = dictnico['dictpopl']['comp']
-indxcompstar = dictnico['dictindx']['comp']['star']
+dictpoplstar = dictnico["dictpopl"]["star"]
+dictpoplcomp = dictnico["dictpopl"]["comp"]
+indxcompstar = dictnico["dictindx"]["comp"]["star"]
 
 
-strgpoplstartotl = 'star' + typepoplsyst + 'totl'
-strgpoplcomptotl = 'compstar' + typepoplsyst + 'totl'
-strgpoplcomptran = 'compstar' + typepoplsyst + 'tran'
+strgpoplstartotl = "star" + typepoplsyst + "totl"
+strgpoplcomptotl = "compstar" + typepoplsyst + "totl"
+strgpoplcomptran = "compstar" + typepoplsyst + "tran"
 
-if (dictpoplcomp[strgpoplcomptotl]['numbcompstar'] > maxmnumbcompstar).any():
-    raise Exception('')
+if (dictpoplcomp[strgpoplcomptotl]["numbcompstar"] > maxmnumbcompstar).any():
+    raise Exception("")
 
 # number of systems
-numbsyst = dictpoplstar[strgpoplstartotl]['radistar'].size
+numbsyst = dictpoplstar[strgpoplstartotl]["radistar"].size
 
 # indices of the systems
 indxsyst = np.arange(numbsyst)
 
 
-
 # visualize individual systems
-pathvisu = pathpoplanls + 'ephesos/'
-os.system('mkdir -p %s' % pathvisu)
+pathvisu = pathpoplanls + "ephesos/"
+os.system("mkdir -p %s" % pathvisu)
 
 dictefesinpt = dict()
-dictefesinpt['typelmdk'] = 'quad'
-#dictefesinpt['typesyst'] = typesyst
-#dictefesinpt['typenorm'] = 'edgeleft'
-dictefesinpt['lablunittime'] = 'days'
-dictefesinpt['booltqdm'] = False
-dictefesinpt['typeverb'] = 0
-#dictefesinpt['typelang'] = typelang
-#dictefesinpt['typefileplot'] = typefileplot
+dictefesinpt["typelmdk"] = "quad"
+# dictefesinpt['typesyst'] = typesyst
+# dictefesinpt['typenorm'] = 'edgeleft'
+dictefesinpt["lablunittime"] = "days"
+dictefesinpt["booltqdm"] = False
+dictefesinpt["typeverb"] = 0
+# dictefesinpt['typelang'] = typelang
+# dictefesinpt['typefileplot'] = typefileplot
 
-#dictefesinpt['booldiag'] = False
+# dictefesinpt['booldiag'] = False
 
-dictefesinpt['boolcalcdistcomp'] = boolcalcdistcomp
+dictefesinpt["boolcalcdistcomp"] = boolcalcdistcomp
 
-#dictefesinpt['boolintp'] = boolintp
-#dictefesinpt['boolwritover'] = boolwritover
-#dictefesinpt['strgextn'] = strgextn
-#dictefesinpt['strgtitl'] = strgtitl
-#dictefesinpt['typecoor'] = typecoor
+# dictefesinpt['boolintp'] = boolintp
+# dictefesinpt['boolwritover'] = boolwritover
+# dictefesinpt['strgextn'] = strgextn
+# dictefesinpt['strgtitl'] = strgtitl
+# dictefesinpt['typecoor'] = typecoor
 
 ## cadence of simulation
 
-cade = 2. / 60. / 24. # days
+cade = 2.0 / 60.0 / 24.0  # days
 
 # minimum period in the ensemble
 minmperi = 1e100
 for k in range(numbsystvisu):
-    minmperi = min(np.amin(dictpoplcomp[strgpoplcomptotl]['pericomp'][k]), minmperi)
+    minmperi = min(np.amin(dictpoplcomp[strgpoplcomptotl]["pericomp"][k]), minmperi)
 if cade > 5e-3 * minmperi:
-    print('1e-3 * minmperi')
+    print("1e-3 * minmperi")
     print(1e-3 * minmperi)
     facttime, lablunittime = tdpy.retr_timeunitdays(cade)
-    raise Exception('Simulation cadence (%g %s) is too long, which will undersample the motion of the innermost companion and diminish animation quality.' % \
-                                                                                                                                        (cade * facttime, lablunittime))
+    raise Exception(
+        "Cadence (%g %s) undersamples the innermost companion." % (cade * facttime, lablunittime)
+    )
 
 ### duration of simulation
-#if typesyst == 'PlanetarySystemWithPhaseCurve':
+# if typesyst == 'PlanetarySystemWithPhaseCurve':
 #    durasimu = dicttemp['pericomp']
 #    if namebatc == 'longbase':
 #        durasimu *= 3.
-#else:
+# else:
 #    durasimu = 6. / 24. # days
 
-#duratrantotl = nicomedia.retr_duratrantotl(dicttemp['pericomp'], dicttemp['rsmacomp'], dicttemp['cosicomp']) / 24. # [days]
-#if typesyst == 'PlanetarySystemWithPhaseCurve':
+# if typesyst == 'PlanetarySystemWithPhaseCurve':
 #    # minimum time
 #    minmtime = -0.25 * durasimu
 #    # maximum time
 #    maxmtime = 0.75 * durasimu
-#else:
+# else:
 #    # minimum time
 #    minmtime = -0.5 * 1.5 * duratrantotl
 #    # maximum time
 #    maxmtime = 0.5 * 1.5 * duratrantotl
 # time axis
-if not np.isfinite(minmtime) or not np.isfinite(maxmtime) or np.isclose(minmtime, maxmtime, rtol=0., atol=1e-15):
-    time = np.array([0.5 * (minmtime + maxmtime)]) if np.isfinite(minmtime) and np.isfinite(maxmtime) else np.array([0.])
+if (
+    not np.isfinite(minmtime)
+    or not np.isfinite(maxmtime)
+    or np.isclose(minmtime, maxmtime, rtol=0.0, atol=1e-15)
+):
+    time = (
+        np.array([0.5 * (minmtime + maxmtime)])
+        if np.isfinite(minmtime) and np.isfinite(maxmtime)
+        else np.array([0.0])
+    )
 else:
     time = np.arange(minmtime, maxmtime, cade)
 
-listnamevarb = ['peri', 'epocmtra', 'rsma', 'cosi']
+listnamevarb = ["peri", "epocmtra", "rsma", "cosi"]
 if boolsystpsys:
-    listnamevarb += ['rrat']
+    listnamevarb += ["rrat"]
 
 from tqdm import tqdm
 
 if boolcalcdistcomp:
-    listnamefeatmult = ['rateppcr', 'numbppcr', 'minmcompdist']
+    listnamefeatmult = ["rateppcr", "numbppcr", "minmcompdist"]
     for name in listnamefeatmult:
-        dictpoplstar[strgpoplstartotl][name] = np.empty(dictpoplstar[strgpoplstartotl]['radistar'].size)
+        dictpoplstar[strgpoplstartotl][name] = np.empty(
+            dictpoplstar[strgpoplstartotl]["radistar"].size
+        )
 
-if typesystCompound == 'PlanetarySystem_Multiple':
-    dictefesinpt['boolplotdistcomp'] = True
+if typesystCompound == "PlanetarySystem_Multiple":
+    dictefesinpt["boolplotdistcomp"] = True
 else:
-    dictefesinpt['boolplotdistcomp'] = False
+    dictefesinpt["boolplotdistcomp"] = False
 
-print('Running ephesos on each system...')
+print("Running ephesos on each system...")
 for k in tqdm(range(numbsyst)):
-    
+
     if k < numbsystvisu:
-        if typesystCompound == 'PlanetarySystem_Multiple':
-            dictefesinpt['boolmakeimaglfov'] = False
-            dictefesinpt['boolmakeanim'] = False
-            dictefesinpt['pathvisu'] = pathvisu
+        if typesystCompound == "PlanetarySystem_Multiple":
+            dictefesinpt["boolmakeimaglfov"] = False
+            dictefesinpt["boolmakeanim"] = False
+            dictefesinpt["pathvisu"] = pathvisu
         else:
-            dictefesinpt['boolmakeimaglfov'] = True
-            dictefesinpt['boolmakeanim'] = True
-            dictefesinpt['pathvisu'] = pathvisu
+            dictefesinpt["boolmakeimaglfov"] = True
+            dictefesinpt["boolmakeanim"] = True
+            dictefesinpt["pathvisu"] = pathvisu
     else:
-        dictefesinpt['boolmakeimaglfov'] = False
-        dictefesinpt['boolmakeanim'] = False
-        dictefesinpt['pathvisu'] = None
-    
+        dictefesinpt["boolmakeimaglfov"] = False
+        dictefesinpt["boolmakeanim"] = False
+        dictefesinpt["pathvisu"] = None
+
     if indxcompstar[k].size == 0:
-        print('')
-        print('')
-        print('')
-        raise Exception('indxcompstar[k].size == 0')
-    
-    if not np.isfinite(dictpoplcomp[strgpoplcomptotl]['rratcomp']).all():
-        print('')
-        print('')
-        print('')
-        print('dictpoplcomp[strgpoplcomptotl][rratcomp]')
-        summgene(dictpoplcomp[strgpoplcomptotl]['rratcomp'])
-        raise Exception('not np.isfinite(dictpoplcomp[strgpoplcomptotl][rratcomp]).all()')
+        print("")
+        print("")
+        print("")
+        raise Exception("indxcompstar[k].size == 0")
+
+    if not np.isfinite(dictpoplcomp[strgpoplcomptotl]["rratcomp"]).all():
+        print("")
+        print("")
+        print("")
+        print("dictpoplcomp[strgpoplcomptotl][rratcomp]")
+        summgene(dictpoplcomp[strgpoplcomptotl]["rratcomp"])
+        raise Exception("not np.isfinite(dictpoplcomp[strgpoplcomptotl][rratcomp]).all()")
 
     for namevarb in listnamevarb:
-        dictefesinpt['%scomp' % namevarb] = dictpoplcomp[strgpoplcomptotl]['%scomp' % namevarb][indxcompstar[k]]
-    
-    dictefesinpt['strgextn'] = '%s_%04d' % (typesyst, k)
-    
+        dictefesinpt["%scomp" % namevarb] = dictpoplcomp[strgpoplcomptotl]["%scomp" % namevarb][
+            indxcompstar[k]
+        ]
+
+    dictefesinpt["strgextn"] = "%s_%04d" % (typesyst, k)
+
     # generate light curve
     dictefesoutp = ephesos.eval_modl(time, typesyst, **dictefesinpt)
 
     if boolcalcdistcomp:
         for name in listnamefeatmult:
             if not np.isscalar(dictefesoutp[name]):
-                print('name')
+                print("name")
                 print(name)
-                print( dictefesoutp[name].shape)
-                raise Exception('')
-    
+                print(dictefesoutp[name].shape)
+                raise Exception("")
+
             dictpoplstar[strgpoplstartotl][name][k] = dictefesoutp[name]
 
-print('Visualizing the simulated population...')
+print("Visualizing the simulated population...")
 liststrgtitlcomp = []
 listboolcompexcl = []
-if typesyst == 'CompactObjectStellarCompanion':
-    liststrgtitlcomp.append('Compact Objects with a stellar companion')
-    lablsampgene = 'COSC'
+if typesyst == "CompactObjectStellarCompanion":
+    liststrgtitlcomp.append("Compact Objects with a stellar companion")
+    lablsampgene = "COSC"
 elif boolsystpsys:
-    liststrgtitlcomp.append('Planets')
-    lablsampgene = 'planet'
-elif typesyst == 'psysmoon':
-    liststrgtitlcomp.append('Exomoons')
-    lablsampgene = 'exomoon'
+    liststrgtitlcomp.append("Planets")
+    lablsampgene = "planet"
+elif typesyst == "psysmoon":
+    liststrgtitlcomp.append("Exomoons")
+    lablsampgene = "exomoon"
 else:
-    print('')
-    print('')
-    print('')
-    print('typesyst')
+    print("")
+    print("")
+    print("")
+    print("typesyst")
     print(typesyst)
-    raise Exception('typesyst undefined.')
+    raise Exception("typesyst undefined.")
 
-pathbase = pathpoplanls + 'pergamon/'
-os.system('mkdir -p %s' % pathbase)
-typeanls = '%s' % (typesyst)
+pathbase = pathpoplanls + "pergamon/"
+os.system("mkdir -p %s" % pathbase)
+typeanls = "%s" % (typesyst)
 
 listdictlablcolrpopl = []
 
-if typesystCompound == 'PlanetarySystem_Multiple':
+if typesystCompound == "PlanetarySystem_Multiple":
     dictpopl = dictpoplstar
     listdictlablcolrpopl.append(dict())
-    listdictlablcolrpopl[-1][strgpoplstartotl] = ['All', 'black']
+    listdictlablcolrpopl[-1][strgpoplstartotl] = ["All", "black"]
     listboolcompexcl.append(True)
 
 else:
     dictpopl = dictpoplcomp
     listdictlablcolrpopl.append(dict())
-    listdictlablcolrpopl[-1][strgpoplcomptotl] = ['All', 'black']
-    if typesyst == 'PlanetarySystemWithNonKeplerianObjects':
-        listdictlablcolrpopl[-1]['AnomalousNKF'] = ['Anomalous NKF', 'blue']
-        indx = np.where(dictpoplcomp[strgpoplcomptotl]['factnonkcomp'] < 0.3)[0]
-        pergamon.retr_subp(dictpoplcomp, None, None, strgpoplcomptotl, 'AnomalousNKF', indx)
+    listdictlablcolrpopl[-1][strgpoplcomptotl] = ["All", "black"]
+    if typesyst == "PlanetarySystemWithNonKeplerianObjects":
+        listdictlablcolrpopl[-1]["AnomalousNKF"] = ["Anomalous NKF", "blue"]
+        indx = np.where(dictpoplcomp[strgpoplcomptotl]["factnonkcomp"] < 0.3)[0]
+        pergamon.retr_subp(dictpoplcomp, None, None, strgpoplcomptotl, "AnomalousNKF", indx)
     listboolcompexcl.append(True)
 
-pergamon.init( \
-             typeanls, \
-             pathbase=pathbase, \
-             dictpopl=dictpopl, \
-             
-             listdictlablcolrpopl=listdictlablcolrpopl, \
-             listboolcompexcl=listboolcompexcl, \
-             listtitlcomp=liststrgtitlcomp, \
-             
-             lablsampgene=lablsampgene, \
-
-             #boolsortpoplsize=False, \
-            )
-
-
-
+pergamon.init(
+    typeanls,
+    pathbase=pathbase,
+    dictpopl=dictpopl,
+    listdictlablcolrpopl=listdictlablcolrpopl,
+    listboolcompexcl=listboolcompexcl,
+    listtitlcomp=liststrgtitlcomp,
+    lablsampgene=lablsampgene,
+    # boolsortpoplsize=False, \
+)
