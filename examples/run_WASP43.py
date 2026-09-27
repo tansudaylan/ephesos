@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Animate an Ephesos model of the WASP-43 b light curve."""
 
-import argparse
 from pathlib import Path
 
 import numpy as np
 
 import ephesos
+from ephesos.cli import run_output_example
 
 
 def run_example(output_path: Path) -> tuple[np.ndarray, np.ndarray]:
@@ -32,11 +32,7 @@ def run_example(output_path: Path) -> tuple[np.ndarray, np.ndarray]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=Path(__file__).with_suffix(".gif"))
-    arguments = parser.parse_args()
-    run_example(arguments.output)
-    return 0
+    return run_output_example(run_example, Path(__file__).with_suffix(".gif"), __doc__)
 
 
 if __name__ == "__main__":
