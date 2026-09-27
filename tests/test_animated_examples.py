@@ -2,6 +2,7 @@ import importlib.util
 import json
 from pathlib import Path
 
+import numpy as np
 import pytest
 from PIL import Image
 
@@ -41,6 +42,22 @@ def test_population_example_writes_animation_per_system(tmp_path):
     for output_path in output_paths:
         with Image.open(output_path) as image:
             assert image.n_frames > 1
+
+
+def test_equal_area_occultor_shapes_produce_finite_distinct_models():
+    example = load_example("arbitrary_occultor")
+    ringed_curves = []
+
+    for orientation in example.RING_CONFIGURATIONS:
+        _, ringed_flux, spherical_flux, oblate_flux = example.evaluate_occultor_models(orientation)
+        assert np.isfinite(ringed_flux).all()
+        assert np.isfinite(spherical_flux).all()
+        assert np.isfinite(oblate_flux).all()
+        assert not np.allclose(spherical_flux, oblate_flux)
+        ringed_curves.append(ringed_flux)
+
+    assert not np.allclose(ringed_curves[0], ringed_curves[1])
+    assert not np.allclose(ringed_curves[1], ringed_curves[2])
 
 
 @pytest.mark.parametrize("name", ("run_WASP43", "run_population"))

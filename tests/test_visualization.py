@@ -89,7 +89,62 @@ def test_save_light_curve_figure_rejects_invalid_options(tmp_path: Path) -> None
             relative_flux,
             tmp_path / "invalid.gif",
             title="Deterministic transit",
+            period=24.0,  # [hour]
+            radius_ratio=0.1,
+            summed_radius_to_semimajor_axis=0.1,
             typeplotback="gray",
+        )
+
+
+@pytest.mark.parametrize(
+    "occultor_type",
+    ("face_on_rings", "horizontal_rings", "vertical_rings"),
+)
+def test_save_light_curve_animation_has_model_and_comparison_panels(
+    tmp_path: Path,
+    occultor_type: str,
+) -> None:
+    time_hours, relative_flux = sample_light_curve()
+    output_path = tmp_path / f"{occultor_type}.gif"
+
+    ephesos.save_light_curve_animation(
+        time_hours,
+        relative_flux,
+        output_path,
+        title="Deterministic transit",
+        period=24.0,  # [hour]
+        radius_ratio=0.1,
+        summed_radius_to_semimajor_axis=0.1,
+        occultor_type=occultor_type,
+        comparison_models={
+            "Spherical planet": relative_flux + 0.002,
+            "Oblate planet": relative_flux + 0.001,
+        },
+        time_label="Time from mid-transit [hour]",
+        max_frames=5,
+    )
+
+    with Image.open(output_path) as animation:
+        animation.seek(animation.n_frames // 2)
+        frame = np.asarray(animation.convert("RGB"))
+        assert animation.n_frames > 1
+        assert frame.shape[1] > 2 * frame.shape[0]
+        assert np.std(frame[:, : frame.shape[1] // 2]) > 20.0
+
+
+def test_save_light_curve_animation_rejects_mismatched_comparison(tmp_path: Path) -> None:
+    time_hours, relative_flux = sample_light_curve()
+
+    with pytest.raises(ValueError, match="matching one-dimensional arrays"):
+        ephesos.save_light_curve_animation(
+            time_hours,
+            relative_flux,
+            tmp_path / "invalid.gif",
+            title="Deterministic transit",
+            period=24.0,  # [hour]
+            radius_ratio=0.1,
+            summed_radius_to_semimajor_axis=0.1,
+            comparison_relative_flux=relative_flux[:-1],
         )
 
 

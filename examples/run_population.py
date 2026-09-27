@@ -34,6 +34,10 @@ def run_example(output_directory: Path) -> list[Path]:
             relative_flux,
             output_path,
             title=f"Population member: {name}",
+            period=period_days * 24.0,  # [hour]
+            radius_ratio=radius_ratio,
+            summed_radius_to_semimajor_axis=0.1,
+            cosine_inclination=cosine_inclination,
             time_label="Time from mid-transit [hour]",
         )
         output_paths.append(output_path)

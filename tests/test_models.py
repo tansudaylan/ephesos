@@ -20,6 +20,28 @@ def test_evaluate_transit_model_returns_finite_transit() -> None:
 
 
 @pytest.mark.parametrize(
+    "occultor_type",
+    ("disk", "oblate", "face_on_rings", "horizontal_rings", "vertical_rings"),
+)
+def test_projected_occultor_models_have_equal_area_depths(occultor_type: str) -> None:
+    time_days = np.array([-0.01, 0.0, 0.01])  # [day]
+
+    relative_flux = ephesos.evaluate_projected_occultor_model(
+        time_days,
+        period_days=4.0,  # [day]
+        equivalent_radius_ratio=0.09,
+        summed_radius_to_semimajor_axis=0.12,
+        occultor_type=occultor_type,
+        cosine_inclination=0.0,
+        limb_darkening_coefficients=(0.0, 0.0),
+        grid_size=801,
+    )
+
+    expected_midtransit_flux = 1.0 - 0.09**2
+    assert relative_flux[1] == pytest.approx(expected_midtransit_flux, abs=2e-4)
+
+
+@pytest.mark.parametrize(
     ("parameter", "value"),
     (
         ("period_days", 0.0),

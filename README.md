@@ -52,6 +52,17 @@ python examples/run_population.py
 Single-system animations are written beside their scripts. Population animations
 are written under `examples/population_animations/`.
 
+The ringed-occultor workflow generates face-on, horizontally projected, and
+vertically projected ring examples. Each animation compares the ringed model
+with spherical and oblate planets on the same orbit. Every shape has the same
+projected occulting area, isolating light-curve differences caused by shape.
+
+![Equal-area face-on ring, spherical planet, and oblate planet transits](examples/arbitrary_occultor_face_on.gif)
+
+![Equal-area horizontal ring, spherical planet, and oblate planet transits](examples/arbitrary_occultor_horizontal.gif)
+
+![Equal-area vertical ring, spherical planet, and oblate planet transits](examples/arbitrary_occultor.gif)
+
 ## Reusable plotting
 
 `ephesos.save_light_curve_figure()` writes `png` output at 300 dots per inch or

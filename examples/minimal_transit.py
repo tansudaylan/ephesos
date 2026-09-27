@@ -9,19 +9,20 @@ import ephesos
 from tdpy.cli import parse_plot_arguments
 
 
+PERIOD_DAYS = 3.0  # [day]
+RADIUS_RATIO = 0.1
+SUMMED_RADIUS_TO_SEMIMAJOR_AXIS = 0.1
+
+
 def evaluate_transit() -> tuple[np.ndarray, np.ndarray]:
     """Evaluate a central transit under explicit dimensionless assumptions."""
 
     time_hours = np.linspace(-4.0, 4.0, 321)  # [hour]
-    period_days = 3.0  # [day]
-    radius_ratio = 0.1
-    summed_radius_to_semimajor_axis = 0.1
-
     relative_flux = ephesos.evaluate_transit_model(
         time_hours / 24.0,
-        period_days=period_days,
-        radius_ratio=radius_ratio,
-        summed_radius_to_semimajor_axis=summed_radius_to_semimajor_axis,
+        period_days=PERIOD_DAYS,
+        radius_ratio=RADIUS_RATIO,
+        summed_radius_to_semimajor_axis=SUMMED_RADIUS_TO_SEMIMAJOR_AXIS,
     )
     return time_hours, relative_flux
 
@@ -50,6 +51,9 @@ def run_example(
         relative_flux,
         animation_path,
         title="Central transit",
+        period=PERIOD_DAYS * 24.0,  # [hour]
+        radius_ratio=RADIUS_RATIO,
+        summed_radius_to_semimajor_axis=SUMMED_RADIUS_TO_SEMIMAJOR_AXIS,
         time_label="Time from mid-transit [hour]",
     )
     return time_hours, relative_flux
