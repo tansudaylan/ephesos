@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Generate a deterministic Ephesos transit-model figure."""
 
-import argparse
 from pathlib import Path
 
 import numpy as np
 
 import ephesos
+from tdpy.cli import parse_plot_arguments
 
 
 def evaluate_transit() -> tuple[np.ndarray, np.ndarray]:
@@ -55,16 +55,10 @@ def run_example(
     return time_hours, relative_flux
 
 
-def parse_arguments() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
+def parse_arguments():
+    return parse_plot_arguments(
         description="Generate a deterministic Ephesos transit-model figure."
     )
-    parser.add_argument(
-        "--typefileplot",
-        choices=("png", "pdf"),
-        default="png",
-    )
-    return parser.parse_args()
 
 
 def main() -> int:
