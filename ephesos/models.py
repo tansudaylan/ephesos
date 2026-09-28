@@ -1,6 +1,8 @@
 """Concise public wrappers around the Ephesos forward model."""
 
 import numpy as np
+from scipy.ndimage import map_coordinates
+from scipy.signal import fftconvolve
 
 from .geometry import OccultorType, projected_occultor_mask
 from .main import eval_modl
@@ -92,14 +94,33 @@ def evaluate_projected_occultor_model(
     projected_x = semimajor_axis_stellar_radii * np.sin(orbital_phase)
     projected_y = semimajor_axis_stellar_radii * cosine_inclination * np.cos(orbital_phase)
 
-    relative_flux = np.empty_like(time_days)
-    for index, (center_x, center_y) in enumerate(zip(projected_x, projected_y)):
-        occulted = projected_occultor_mask(
-            image_x - center_x,
-            image_y - center_y,
-            equivalent_radius_ratio,
-            occultor_type,
-            oblateness=oblateness,
+    # Correlate once, then interpolate the blocked flux at subpixel positions.
+    # This avoids staircase artifacts from re-rasterizing a hard mask at each time.
+    occultor_kernel = projected_occultor_mask(
+        image_x,
+        image_y,
+        equivalent_radius_ratio,
+        occultor_type,
+        oblateness=oblateness,
+    ).astype(float)
+    occultor_kernel = 0.5 * (occultor_kernel + occultor_kernel[::-1, ::-1])
+    blocked_flux_grid = fftconvolve(
+        stellar_brightness,
+        occultor_kernel,
+        mode="full",
+    )
+    pixels_per_stellar_radius = 0.5 * (grid_size - 1)
+    sample_coordinates = np.vstack(
+        (
+            projected_y * pixels_per_stellar_radius + grid_size - 1,
+            projected_x * pixels_per_stellar_radius + grid_size - 1,
         )
-        relative_flux[index] = 1.0 - stellar_brightness[occulted].sum() / unocculted_flux
-    return relative_flux
+    )
+    blocked_flux = map_coordinates(
+        blocked_flux_grid,
+        sample_coordinates,
+        order=1,
+        mode="constant",
+        cval=0.0,
+    )
+    return 1.0 - blocked_flux / unocculted_flux

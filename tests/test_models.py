@@ -42,6 +42,30 @@ def test_projected_occultor_models_have_equal_area_depths(occultor_type: str) ->
 
 
 @pytest.mark.parametrize(
+    "occultor_type",
+    ("disk", "oblate", "face_on_rings", "horizontal_rings", "vertical_rings"),
+)
+def test_projected_occultor_models_are_smooth_near_midtransit(
+    occultor_type: str,
+) -> None:
+    time_days = np.linspace(-0.09, 0.09, 181)  # [day]
+
+    relative_flux = ephesos.evaluate_projected_occultor_model(
+        time_days,
+        period_days=4.0,  # [day]
+        equivalent_radius_ratio=0.09,
+        summed_radius_to_semimajor_axis=0.12,
+        occultor_type=occultor_type,
+        cosine_inclination=0.03,
+    )
+
+    center_index = time_days.size // 2
+    assert np.all(np.diff(relative_flux[: center_index + 1]) <= 1e-8)
+    assert np.all(np.diff(relative_flux[center_index:]) >= -1e-8)
+    assert np.allclose(relative_flux, relative_flux[::-1], atol=1e-10)
+
+
+@pytest.mark.parametrize(
     ("parameter", "value"),
     (
         ("period_days", 0.0),
