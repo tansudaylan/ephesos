@@ -49,6 +49,43 @@ def evaluate_transit_model(
     return relative_flux
 
 
+def derive_transit_features(
+    time_days: np.ndarray,
+    relative_flux: np.ndarray,
+) -> np.ndarray:
+    """Derive depth, duration, ingress time, and equivalent width from a transit."""
+
+    time_days = np.asarray(time_days, dtype=float)
+    relative_flux = np.asarray(relative_flux, dtype=float)
+    if time_days.ndim != 1 or relative_flux.shape != time_days.shape or time_days.size < 3:
+        raise ValueError("time_days and relative_flux must be matching one-dimensional arrays")
+    if not np.isfinite(time_days).all() or not np.isfinite(relative_flux).all():
+        raise ValueError("light-curve inputs must contain only finite values")
+    if not np.all(np.diff(time_days) > 0.0):
+        raise ValueError("time_days must be strictly increasing")
+
+    flux_deficit = np.clip(1.0 - relative_flux, 0.0, None)
+    depth = np.max(flux_deficit)
+    if depth <= 0.0:
+        raise ValueError("relative_flux must contain a transit")
+
+    center_index = int(np.argmax(flux_deficit))
+    ingress_deficit = flux_deficit[: center_index + 1]
+    ingress_time = time_days[: center_index + 1]
+    egress_deficit = flux_deficit[center_index:][::-1]
+    egress_time = time_days[center_index:][::-1]
+    contact_start = np.interp(0.001 * depth, ingress_deficit, ingress_time)
+    contact_end = np.interp(0.001 * depth, egress_deficit, egress_time)
+    ingress_start = np.interp(0.01 * depth, ingress_deficit, ingress_time)
+    ingress_end = np.interp(0.99 * depth, ingress_deficit, ingress_time)
+
+    depth_percent = 100.0 * depth  # [percent]
+    duration_hours = 24.0 * (contact_end - contact_start)  # [hour]
+    ingress_minutes = 24.0 * 60.0 * (ingress_end - ingress_start)  # [minute]
+    equivalent_width_minutes = 24.0 * 60.0 * np.trapezoid(flux_deficit, time_days)  # [minute]
+    return np.array((depth_percent, duration_hours, ingress_minutes, equivalent_width_minutes))
+
+
 def evaluate_projected_occultor_model(
     time_days: np.ndarray,
     *,

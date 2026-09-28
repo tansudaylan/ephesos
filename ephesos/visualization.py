@@ -9,6 +9,7 @@ matplotlib.use("agg")
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter
+import corner
 import numpy as np
 from PIL import Image
 
@@ -17,6 +18,55 @@ from .geometry import OccultorType, projected_occultor_mask
 
 PlotBackground = Literal["white", "dark"]
 PlotFileType = Literal["png", "pdf"]
+
+
+def save_corner_figure(
+    samples: np.ndarray,
+    labels: list[str] | tuple[str, ...],
+    output_path: Path | str,
+    *,
+    title: str,
+    typefileplot: PlotFileType = "png",
+    font_size: float = 11.0,  # [point]
+) -> Path:
+    """Write a corner plot summarizing a population of derived features."""
+
+    samples = np.asarray(samples, dtype=float)
+    if samples.ndim != 2 or samples.shape[0] < 2 or samples.shape[1] != len(labels):
+        raise ValueError("samples must contain multiple rows and one column per label")
+    if not np.isfinite(samples).all():
+        raise ValueError("samples must contain only finite values")
+    if typefileplot not in ("png", "pdf"):
+        raise ValueError("typefileplot must be 'png' or 'pdf'")
+
+    output_path = Path(output_path).with_suffix(f".{typefileplot}")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    figure = corner.corner(
+        samples,
+        labels=labels,
+        bins=24,
+        color="#16697A",
+        plot_datapoints=True,
+        plot_density=False,
+        plot_contours=False,
+        quantiles=(0.16, 0.5, 0.84),
+        show_titles=True,
+        label_kwargs={"fontsize": font_size},
+        title_kwargs={"fontsize": font_size},
+        hist_kwargs={"linewidth": 1.8},
+        data_kwargs={"alpha": 0.45},
+    )
+    figure.suptitle(title, fontsize=font_size)
+    for axis in figure.axes:
+        axis.grid(False)
+        axis.tick_params(labelsize=font_size)
+    figure.set_facecolor("white")
+    figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.98))
+
+    print(f"Writing to {output_path}...")
+    figure.savefig(output_path, dpi=300 if typefileplot == "png" else None, bbox_inches="tight")
+    plt.close(figure)
+    return output_path
 
 
 def _validate_light_curve(

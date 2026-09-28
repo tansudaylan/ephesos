@@ -41,6 +41,15 @@ def test_projected_occultor_models_have_equal_area_depths(occultor_type: str) ->
     assert relative_flux[1] == pytest.approx(expected_midtransit_flux, abs=2e-4)
 
 
+def test_derive_transit_features_recovers_trapezoid_observables() -> None:
+    time_days = np.arange(-3.0, 4.0) / 24.0  # [day]
+    relative_flux = np.array((1.0, 0.995, 0.99, 0.99, 0.99, 0.995, 1.0))
+
+    features = ephesos.derive_transit_features(time_days, relative_flux)
+
+    assert features == pytest.approx((1.0, 5.996, 117.6, 2.4))
+
+
 @pytest.mark.parametrize(
     "occultor_type",
     ("disk", "oblate", "face_on_rings", "horizontal_rings", "vertical_rings"),

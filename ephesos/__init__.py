@@ -1,9 +1,14 @@
 """Ephesos light-curve forward-modeling package."""
 
 from .main import *  # noqa: F401,F403
-from .models import evaluate_projected_occultor_model, evaluate_transit_model
+from .models import (
+    derive_transit_features,
+    evaluate_projected_occultor_model,
+    evaluate_transit_model,
+)
 from .paths import get_data_path, get_repository_path, get_visuals_path
 from .visualization import (
+    save_corner_figure,
     save_frame_animation,
     save_light_curve_animation,
     save_light_curve_figure,

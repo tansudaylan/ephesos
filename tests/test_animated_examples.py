@@ -34,14 +34,20 @@ def test_single_system_examples_write_animations(name, tmp_path):
         assert image.n_frames > 1
 
 
-def test_population_example_writes_animation_per_system(tmp_path):
-    output_paths = load_example("run_population").run_example(tmp_path)
+def test_population_example_writes_derived_feature_corner_plot(tmp_path):
+    features, output_path = load_example("run_population").run_example(
+        tmp_path / "population_features.png",
+        sample_size=24,
+    )
 
-    assert len(output_paths) == 3
-    assert all(path.is_file() and path.stat().st_size > 1_000 for path in output_paths)
-    for output_path in output_paths:
-        with Image.open(output_path) as image:
-            assert image.n_frames > 1
+    assert features.shape == (24, 4)
+    assert np.isfinite(features).all()
+    assert np.all(np.ptp(features, axis=0) > 0.0)
+    assert output_path.is_file() and output_path.stat().st_size > 10_000
+    with Image.open(output_path) as image:
+        assert image.n_frames == 1
+        assert image.width > 1_000
+        assert image.height > 1_000
 
 
 def test_equal_area_occultor_shapes_produce_finite_distinct_models():

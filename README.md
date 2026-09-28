@@ -38,8 +38,9 @@ python examples/minimal_transit.py --typefileplot png
 The curve is a deterministic prediction under these assumptions. It contains no
 observed or randomly generated data. The model produces a 1.13% transit depth.
 
-Every maintained example writes a compact GIF without external data or command-line
-animation tools.
+Maintained single-system examples write compact GIFs without external data or
+command-line animation tools. The population example writes a static corner plot
+of features derived from the synthesized light curves.
 
 ```bash
 python examples/minimal_transit.py
@@ -49,8 +50,11 @@ python examples/run_WASP43.py
 python examples/run_population.py
 ```
 
-Single-system animations are written beside their scripts. Population animations
-are written under `examples/population_animations/`.
+Single-system animations are written beside their scripts. The population summary
+is written to `examples/population_features.png` and shows transit depth, total
+duration, ingress duration, and equivalent width for 256 deterministic systems.
+
+![Corner plot of derived transiting-planet population features](examples/population_features.png)
 
 The ringed-occultor workflow generates face-on, horizontally projected, and
 vertically projected ring examples. Each animation compares the ringed model
