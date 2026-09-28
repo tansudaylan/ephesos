@@ -6,6 +6,7 @@ import pytest
 from PIL import Image
 
 import ephesos
+from ephesos.visualization import _select_animation_frame_indices
 
 
 def sample_light_curve() -> tuple[np.ndarray, np.ndarray]:
@@ -14,6 +15,24 @@ def sample_light_curve() -> tuple[np.ndarray, np.ndarray]:
     time_hours = np.linspace(-2.0, 2.0, 21)  # [hour]
     relative_flux = 1.0 - 0.01 * np.exp(-0.5 * time_hours**2)
     return time_hours, relative_flux
+
+
+def test_animation_sampling_concentrates_frames_on_ingress_and_egress() -> None:
+    relative_flux = np.ones(401)
+    relative_flux[100:121] = np.linspace(1.0, 0.99, 21)
+    relative_flux[121:280] = 0.99
+    relative_flux[280:301] = np.linspace(0.99, 1.0, 21)
+
+    frame_indices = _select_animation_frame_indices(relative_flux, max_frames=72)
+    transition_frames = np.count_nonzero(
+        ((frame_indices >= 100) & (frame_indices <= 120))
+        | ((frame_indices >= 280) & (frame_indices <= 300))
+    )
+
+    assert frame_indices.size == 72
+    assert transition_frames >= 36
+    assert frame_indices[0] == 0
+    assert frame_indices[-1] == relative_flux.size - 1
 
 
 @pytest.mark.parametrize("typefileplot", ("png", "pdf"))

@@ -33,6 +33,47 @@ def _validate_light_curve(
     return time, relative_flux
 
 
+def _select_animation_frame_indices(
+    relative_flux: np.ndarray,
+    max_frames: int,
+) -> np.ndarray:
+    """Sample the full sequence while concentrating frames on flux transitions."""
+
+    if max_frames < 2:
+        raise ValueError("max_frames must be at least two")
+    frame_count = min(max_frames, relative_flux.size)
+    if frame_count == relative_flux.size:
+        return np.arange(frame_count)
+
+    uniform_count = max(2, frame_count // 3)
+    uniform_indices = np.linspace(0, relative_flux.size - 1, uniform_count, dtype=int)
+    cumulative_variation = np.cumsum(np.abs(np.diff(relative_flux, prepend=relative_flux[0])))
+    if cumulative_variation[-1] > 0.0:
+        transition_count = frame_count - uniform_count
+        variation_targets = np.linspace(
+            0.0,
+            cumulative_variation[-1],
+            transition_count + 2,
+        )[1:-1]
+        transition_indices = np.searchsorted(cumulative_variation, variation_targets)
+        selected_indices = np.unique(np.concatenate((uniform_indices, transition_indices)))
+    else:
+        selected_indices = uniform_indices
+
+    # Fill duplicate quantiles by repeatedly bisecting the largest unsampled gaps.
+    while selected_indices.size < frame_count:
+        remaining_indices = np.setdiff1d(
+            np.arange(relative_flux.size), selected_indices, assume_unique=True
+        )
+        nearest_distance = np.min(
+            np.abs(remaining_indices[:, None] - selected_indices[None, :]), axis=1
+        )
+        selected_indices = np.sort(
+            np.append(selected_indices, remaining_indices[np.argmax(nearest_distance)])
+        )
+    return selected_indices
+
+
 def _plot_colors(typeplotback: PlotBackground) -> dict[str, str]:
     """Return an accessible light-curve palette for the requested background."""
 
@@ -201,8 +242,9 @@ def save_light_curve_animation(
     comparison_models: dict[str, np.ndarray] | None = None,
     model_label: str = "Complete model",
     time_label: str = "Time [day]",
-    max_frames: int = 24,
-    frames_per_second: int = 12,  # [frame s^-1]
+    max_frames: int = 72,
+    frames_per_second: int = 24,  # [frame s^-1]
+    animation_dpi: int = 100,  # [dot inch^-1]
     typeplotback: PlotBackground = "white",
     font_size: float = 11.0,  # [point]
 ) -> Path:
@@ -224,6 +266,10 @@ def save_light_curve_animation(
         raise ValueError("summed_radius_to_semimajor_axis must be positive")
     if not -1.0 <= cosine_inclination <= 1.0:
         raise ValueError("cosine_inclination must be between -1 and 1")
+    if frames_per_second <= 0:
+        raise ValueError("frames_per_second must be positive")
+    if animation_dpi <= 0:
+        raise ValueError("animation_dpi must be positive")
     valid_occultor_types = (
         "disk",
         "oblate",
@@ -239,7 +285,7 @@ def save_light_curve_animation(
         raise ValueError("output_path must have a .gif suffix")
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    frame_indices = np.unique(np.linspace(0, time.size - 1, min(max_frames, time.size), dtype=int))
+    frame_indices = _select_animation_frame_indices(relative_flux, max_frames)
     plotted_flux = np.concatenate((relative_flux, *validated_comparison_models.values()))
     flux_span = np.ptp(plotted_flux)
     flux_padding = max(0.08 * flux_span, 1e-4)
@@ -370,6 +416,10 @@ def save_light_curve_animation(
 
     animation = FuncAnimation(figure, update, frames=frame_indices, blit=True)
     print(f"Writing to {output_path}...")
-    animation.save(output_path, writer=PillowWriter(fps=frames_per_second))
+    animation.save(
+        output_path,
+        writer=PillowWriter(fps=frames_per_second),
+        dpi=animation_dpi,
+    )
     plt.close(figure)
     return output_path
