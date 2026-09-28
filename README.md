@@ -8,9 +8,9 @@ The core workflow evaluates sky-projected brightness through `ephesos.eval_modl(
 The concise `ephesos.evaluate_transit_model()` interface covers deterministic
 single-companion transit calculations.
 
-## Repository role in the ecosystem
-Ephesos is a scientific modeling library within the astrophysical analysis stack.
-It exposes how physical assumptions determine a modeled light curve.
+## Light-curve modeling
+Ephesos predicts light curves from explicit orbital geometry, companion
+sizes, surface-brightness profiles, and limb-darkening assumptions.
 
 ## Installation
 
