@@ -44,30 +44,38 @@ def evaluate_system() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     return time_days, relative_flux, summed_radius_to_semimajor_axis, hill_separations
 
 
-def run_example(output_path: Path) -> tuple[np.ndarray, np.ndarray]:
-    """Write the synchronized system-view and frequent-transit animation."""
+def run_example(
+    output_path: Path,
+    max_frames: int = 144,
+) -> tuple[np.ndarray, np.ndarray, tuple[Path, Path]]:
+    """Write reveal and trailing variants of the compact-system animation."""
 
     time_days, relative_flux, summed_radius, hill_separations = evaluate_system()
     if np.min(hill_separations) <= 2.0 * np.sqrt(3.0):
         raise ValueError("adjacent planets must be separated by the pairwise Hill-stability limit")
     semimajor_axis_stellar_radii = (1.0 + RADIUS_RATIO) / summed_radius
     impact_parameter = np.array((0.08, 0.13, 0.18, 0.24, 0.30, 0.37, 0.44))
-    ephesos.save_light_curve_animation(
-        time_days,
-        relative_flux,
-        output_path,
-        title="Compact seven-planet resonant chain",
-        period=PERIOD_DAYS,
-        transit_epoch=TRANSIT_EPOCH_DAYS,
-        radius_ratio=RADIUS_RATIO,
-        summed_radius_to_semimajor_axis=summed_radius,
-        cosine_inclination=impact_parameter / semimajor_axis_stellar_radii,
-        model_label="Combined seven-planet model",
-        time_label="Time [day]",
-        max_frames=144,
-        light_curve_mode="trailing",
+    output_stem = output_path.with_suffix("")
+    output_paths = tuple(
+        output_stem.with_name(f"{output_stem.name}_{mode}.gif") for mode in ("reveal", "trailing")
     )
-    return time_days, relative_flux
+    for mode, mode_output_path in zip(("reveal", "trailing"), output_paths):
+        ephesos.save_light_curve_animation(
+            time_days,
+            relative_flux,
+            mode_output_path,
+            title="Compact seven-planet resonant chain",
+            period=PERIOD_DAYS,
+            transit_epoch=TRANSIT_EPOCH_DAYS,
+            radius_ratio=RADIUS_RATIO,
+            summed_radius_to_semimajor_axis=summed_radius,
+            cosine_inclination=impact_parameter / semimajor_axis_stellar_radii,
+            model_label="Combined seven-planet model",
+            time_label="Time [day]",
+            max_frames=max_frames,
+            light_curve_mode=mode,
+        )
+    return time_days, relative_flux, output_paths
 
 
 def main() -> int:

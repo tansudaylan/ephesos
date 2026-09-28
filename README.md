@@ -73,7 +73,13 @@ TRAPPIST-1-like resonant chain rather than fitting observations. It produces 21
 transit events over 12 days. Its minimum adjacent separation is 6.54 mutual Hill
 radii, exceeding the circular coplanar pairwise threshold of 3.46.
 
-![Compact seven-planet transit diagnostic animation](examples/compact_multiplanet.gif)
+The reveal variant preserves the complete green light-curve history.
+
+![Compact seven-planet reveal animation](examples/compact_multiplanet_reveal.gif)
+
+The trailing variant keeps only the latest three transit durations green.
+
+![Compact seven-planet trailing-history animation](examples/compact_multiplanet_trailing.gif)
 
 ## Reusable plotting
 

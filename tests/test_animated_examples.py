@@ -20,7 +20,7 @@ def load_example(name):
 
 @pytest.mark.parametrize(
     "name",
-    ("arbitrary_occultor", "compact_multiplanet", "run_WhiteDwarf", "run_WASP43"),
+    ("arbitrary_occultor", "run_WhiteDwarf", "run_WASP43"),
 )
 def test_single_system_examples_write_animations(name, tmp_path):
     output_path = tmp_path / f"{name}.gif"
@@ -32,6 +32,22 @@ def test_single_system_examples_write_animations(name, tmp_path):
     assert output_path.stat().st_size > 1_000
     with Image.open(output_path) as image:
         assert image.n_frames > 1
+
+
+def test_compact_multiplanet_example_writes_unique_history_modes(tmp_path):
+    time, relative_flux, output_paths = load_example("compact_multiplanet").run_example(
+        tmp_path / "compact_multiplanet.gif",
+        max_frames=5,
+    )
+
+    assert time.shape == relative_flux.shape
+    assert {path.name for path in output_paths} == {
+        "compact_multiplanet_reveal.gif",
+        "compact_multiplanet_trailing.gif",
+    }
+    for output_path in output_paths:
+        with Image.open(output_path) as image:
+            assert image.n_frames > 1
 
 
 def test_population_example_writes_derived_feature_corner_plot(tmp_path):
