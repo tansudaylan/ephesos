@@ -6,7 +6,7 @@ import pytest
 from PIL import Image
 
 import ephesos
-from ephesos.visualization import _select_animation_frame_indices
+from ephesos.visualization import _estimate_transit_duration, _select_animation_frame_indices
 
 
 def sample_light_curve() -> tuple[np.ndarray, np.ndarray]:
@@ -33,6 +33,17 @@ def test_animation_sampling_concentrates_frames_on_ingress_and_egress() -> None:
     assert transition_frames >= 36
     assert frame_indices[0] == 0
     assert frame_indices[-1] == relative_flux.size - 1
+
+
+def test_animation_history_defaults_to_three_transit_durations() -> None:
+    time_hours = np.linspace(0.0, 10.0, 101)  # [hour]
+    relative_flux = np.ones_like(time_hours)
+    relative_flux[10:13] = 0.99
+    relative_flux[40:43] = 0.99
+
+    transit_duration = _estimate_transit_duration(time_hours, relative_flux)
+
+    assert 3.0 * transit_duration == pytest.approx(0.6)
 
 
 @pytest.mark.parametrize("typefileplot", ("png", "pdf"))
@@ -164,6 +175,34 @@ def test_save_light_curve_animation_rejects_mismatched_comparison(tmp_path: Path
             radius_ratio=0.1,
             summed_radius_to_semimajor_axis=0.1,
             comparison_relative_flux=relative_flux[:-1],
+        )
+
+
+def test_save_light_curve_animation_rejects_invalid_history_options(tmp_path: Path) -> None:
+    time_hours, relative_flux = sample_light_curve()
+
+    with pytest.raises(ValueError, match="light_curve_mode"):
+        ephesos.save_light_curve_animation(
+            time_hours,
+            relative_flux,
+            tmp_path / "invalid.gif",
+            title="Deterministic transit",
+            period=24.0,  # [hour]
+            radius_ratio=0.1,
+            summed_radius_to_semimajor_axis=0.1,
+            light_curve_mode="window",
+        )
+    with pytest.raises(ValueError, match="history_duration"):
+        ephesos.save_light_curve_animation(
+            time_hours,
+            relative_flux,
+            tmp_path / "invalid.gif",
+            title="Deterministic transit",
+            period=24.0,  # [hour]
+            radius_ratio=0.1,
+            summed_radius_to_semimajor_axis=0.1,
+            light_curve_mode="trailing",
+            history_duration=0.0,
         )
 
 

@@ -45,6 +45,7 @@ of features derived from the synthesized light curves.
 ```bash
 python examples/minimal_transit.py
 python examples/arbitrary_occultor.py
+python examples/compact_multiplanet.py
 python examples/run_WhiteDwarf.py
 python examples/run_WASP43.py
 python examples/run_population.py
@@ -67,12 +68,23 @@ projected occulting area, isolating light-curve differences caused by shape.
 
 ![Equal-area vertical ring, spherical planet, and oblate planet transits](examples/arbitrary_occultor.gif)
 
+The compact-system example synthesizes an illustrative seven-planet
+TRAPPIST-1-like resonant chain rather than fitting observations. It produces 21
+transit events over 12 days. Its minimum adjacent separation is 6.54 mutual Hill
+radii, exceeding the circular coplanar pairwise threshold of 3.46.
+
+![Compact seven-planet transit diagnostic animation](examples/compact_multiplanet.gif)
+
 ## Reusable plotting
 
 `ephesos.save_light_curve_figure()` writes `png` output at 300 dots per inch or
 vector `pdf` output. It uses a white background by default and accepts
 `typeplotback="dark"`. `ephesos.save_light_curve_animation()` applies the same
-labels, colors, typography, and opaque legend to GIF output.
+labels, colors, typography, and opaque legend to GIF output. Its default
+`light_curve_mode="reveal"` retains the complete green history. The alternative
+`light_curve_mode="trailing"` shows a moving recent-history window over the gray
+curve. That window defaults to three measured transit durations and can be set
+explicitly with `history_duration` in the time-axis units.
 
 ## Model diagnostics
 A useful forward-model run should make the following visible:
@@ -83,9 +95,4 @@ A useful forward-model run should make the following visible:
 - any residuals or model comparison diagnostics
 
 This makes the scientific assumptions directly inspectable.
-
-## Current maintenance status
-Ephesos remains a focused research-grade scientific library. Its supported surface
-consists of importable model, evaluation, and visualization functions. Regression
-tests cover legacy internals while maintained workflows move into package functions.
 

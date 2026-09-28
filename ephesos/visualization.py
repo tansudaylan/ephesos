@@ -18,6 +18,7 @@ from .geometry import OccultorType, projected_occultor_mask
 
 PlotBackground = Literal["white", "dark"]
 PlotFileType = Literal["png", "pdf"]
+LightCurveAnimationMode = Literal["reveal", "trailing"]
 
 
 def save_corner_figure(
@@ -122,6 +123,22 @@ def _select_animation_frame_indices(
             np.append(selected_indices, remaining_indices[np.argmax(nearest_distance)])
         )
     return selected_indices
+
+
+def _estimate_transit_duration(time: np.ndarray, relative_flux: np.ndarray) -> float:
+    """Estimate the median complete transit duration in the units of ``time``."""
+
+    flux_deficit = np.clip(1.0 - relative_flux, 0.0, None)
+    threshold = max(1e-8, 0.001 * np.max(flux_deficit))
+    in_transit = flux_deficit > threshold
+    boundaries = np.diff(in_transit.astype(int), prepend=0, append=0)
+    starts = np.flatnonzero(boundaries == 1)
+    stops = np.flatnonzero(boundaries == -1) - 1
+    complete = (starts > 0) & (stops < time.size - 1)
+    durations = time[stops[complete]] - time[starts[complete]]
+    if durations.size == 0 or not np.any(durations > 0.0):
+        return 0.1 * (time[-1] - time[0])
+    return float(np.median(durations[durations > 0.0]))
 
 
 def _plot_colors(typeplotback: PlotBackground) -> dict[str, str]:
@@ -280,10 +297,11 @@ def save_light_curve_animation(
     output_path: Path | str,
     *,
     title: str,
-    period: float,
-    radius_ratio: float,
-    summed_radius_to_semimajor_axis: float,
-    cosine_inclination: float = 0.0,
+    period: float | np.ndarray,
+    radius_ratio: float | np.ndarray,
+    summed_radius_to_semimajor_axis: float | np.ndarray,
+    cosine_inclination: float | np.ndarray = 0.0,
+    transit_epoch: float | np.ndarray = 0.0,
     limb_darkening_coefficients: tuple[float, float] = (0.4, 0.25),
     occultor_type: OccultorType = "disk",
     oblateness: float = 0.3,
@@ -295,6 +313,8 @@ def save_light_curve_animation(
     max_frames: int = 72,
     frames_per_second: int = 24,  # [frame s^-1]
     animation_dpi: int = 100,  # [dot inch^-1]
+    light_curve_mode: LightCurveAnimationMode = "reveal",
+    history_duration: float | None = None,
     typeplotback: PlotBackground = "white",
     font_size: float = 11.0,  # [point]
 ) -> Path:
@@ -308,18 +328,44 @@ def save_light_curve_animation(
     if comparison_models is not None:
         for label, comparison_flux in comparison_models.items():
             _, validated_comparison_models[label] = _validate_light_curve(time, comparison_flux)
-    if period <= 0.0:
+    period, radius_ratio, summed_radius_to_semimajor_axis, cosine_inclination, transit_epoch = (
+        np.broadcast_arrays(
+            np.atleast_1d(np.asarray(period, dtype=float)),
+            np.atleast_1d(np.asarray(radius_ratio, dtype=float)),
+            np.atleast_1d(np.asarray(summed_radius_to_semimajor_axis, dtype=float)),
+            np.atleast_1d(np.asarray(cosine_inclination, dtype=float)),
+            np.atleast_1d(np.asarray(transit_epoch, dtype=float)),
+        )
+    )
+    if not all(
+        np.isfinite(parameter).all()
+        for parameter in (
+            period,
+            radius_ratio,
+            summed_radius_to_semimajor_axis,
+            cosine_inclination,
+            transit_epoch,
+        )
+    ):
+        raise ValueError("orbital parameters must contain only finite values")
+    if np.any(period <= 0.0):
         raise ValueError("period must be positive")
-    if radius_ratio <= 0.0:
+    if np.any(radius_ratio <= 0.0):
         raise ValueError("radius_ratio must be positive")
-    if summed_radius_to_semimajor_axis <= 0.0:
+    if np.any(summed_radius_to_semimajor_axis <= 0.0):
         raise ValueError("summed_radius_to_semimajor_axis must be positive")
-    if not -1.0 <= cosine_inclination <= 1.0:
+    if np.any(np.abs(cosine_inclination) > 1.0):
         raise ValueError("cosine_inclination must be between -1 and 1")
     if frames_per_second <= 0:
         raise ValueError("frames_per_second must be positive")
     if animation_dpi <= 0:
         raise ValueError("animation_dpi must be positive")
+    if light_curve_mode not in ("reveal", "trailing"):
+        raise ValueError("light_curve_mode must be 'reveal' or 'trailing'")
+    if history_duration is not None and history_duration <= 0.0:
+        raise ValueError("history_duration must be positive")
+    if light_curve_mode == "trailing" and history_duration is None:
+        history_duration = 3.0 * _estimate_transit_duration(time, relative_flux)
     valid_occultor_types = (
         "disk",
         "oblate",
@@ -343,12 +389,14 @@ def save_light_curve_animation(
 
     # Calculate the circular sky-plane orbit in units of the stellar radius.
     semimajor_axis_stellar_radii = (1.0 + radius_ratio) / summed_radius_to_semimajor_axis
-    orbital_phase = 2.0 * np.pi * time / period
-    projected_x = semimajor_axis_stellar_radii * np.sin(orbital_phase)
-    projected_y = semimajor_axis_stellar_radii * cosine_inclination * np.cos(orbital_phase)
+    orbital_phase = 2.0 * np.pi * (time[None, :] - transit_epoch[:, None]) / period[:, None]
+    projected_x = semimajor_axis_stellar_radii[:, None] * np.sin(orbital_phase)
+    projected_y = (
+        semimajor_axis_stellar_radii[:, None] * cosine_inclination[:, None] * np.cos(orbital_phase)
+    )
 
     # Render the same quadratic limb-darkened stellar surface assumed by the model.
-    image_limit = max(1.25, 1.1 * 1.75 * radius_ratio)
+    image_limit = max(1.25, 1.1 * 1.75 * np.max(radius_ratio))
     image_coordinates = np.linspace(-image_limit, image_limit, 181)
     image_x, image_y = np.meshgrid(image_coordinates, image_coordinates)
     radial_distance = np.sqrt(image_x**2 + image_y**2)
@@ -448,19 +496,25 @@ def save_light_curve_animation(
     figure.tight_layout()
 
     def update(frame_index: int):
-        distance_x = image_x - projected_x[frame_index]
-        distance_y = image_y - projected_y[frame_index]
-        occulted = projected_occultor_mask(
-            distance_x,
-            distance_y,
-            radius_ratio,
-            occultor_type,
-            oblateness=oblateness,
-        )
+        occulted = np.zeros_like(stellar_disk)
+        for companion_index in range(period.size):
+            distance_x = image_x - projected_x[companion_index, frame_index]
+            distance_y = image_y - projected_y[companion_index, frame_index]
+            occulted |= projected_occultor_mask(
+                distance_x,
+                distance_y,
+                radius_ratio[companion_index],
+                occultor_type,
+                oblateness=oblateness,
+            )
         current_brightness = np.where(occulted, 0.0, stellar_brightness)
         model_image.set_data(current_brightness)
         stop = frame_index + 1
-        model_line.set_data(time[:stop], relative_flux[:stop])
+        if light_curve_mode == "trailing":
+            start = np.searchsorted(time, time[frame_index] - history_duration)
+        else:
+            start = 0
+        model_line.set_data(time[start:stop], relative_flux[start:stop])
         current_point.set_data([time[frame_index]], [relative_flux[frame_index]])
         return model_image, model_line, current_point
 

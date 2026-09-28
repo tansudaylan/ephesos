@@ -20,7 +20,7 @@ def load_example(name):
 
 @pytest.mark.parametrize(
     "name",
-    ("arbitrary_occultor", "run_WhiteDwarf", "run_WASP43"),
+    ("arbitrary_occultor", "compact_multiplanet", "run_WhiteDwarf", "run_WASP43"),
 )
 def test_single_system_examples_write_animations(name, tmp_path):
     output_path = tmp_path / f"{name}.gif"

@@ -49,6 +49,93 @@ def evaluate_transit_model(
     return relative_flux
 
 
+def evaluate_multiplanet_transit_model(
+    time_days: np.ndarray,
+    *,
+    period_days: np.ndarray,
+    transit_epoch_days: np.ndarray,
+    radius_ratio: np.ndarray,
+    summed_radius_to_semimajor_axis: np.ndarray,
+    cosine_inclination: np.ndarray,
+    limb_darkening_coefficients: np.ndarray | None = None,
+) -> np.ndarray:
+    """Evaluate the combined light curve of multiple transiting planets."""
+
+    time_days = np.asarray(time_days, dtype=float)
+    parameters = tuple(
+        np.asarray(parameter, dtype=float)
+        for parameter in (
+            period_days,
+            transit_epoch_days,
+            radius_ratio,
+            summed_radius_to_semimajor_axis,
+            cosine_inclination,
+        )
+    )
+    if time_days.ndim != 1 or time_days.size < 2 or not np.isfinite(time_days).all():
+        raise ValueError("time_days must be a finite one-dimensional array")
+    if any(parameter.ndim != 1 for parameter in parameters):
+        raise ValueError("planet parameters must be one-dimensional arrays")
+    if len({parameter.size for parameter in parameters}) != 1 or parameters[0].size < 2:
+        raise ValueError("planet parameters must have matching lengths of at least two")
+    if not all(np.isfinite(parameter).all() for parameter in parameters):
+        raise ValueError("planet parameters must contain only finite values")
+
+    period_days, transit_epoch_days, radius_ratio, summed_radius, cosine_inclination = parameters
+    if np.any(period_days <= 0.0):
+        raise ValueError("period_days must be positive")
+    if np.any(radius_ratio <= 0.0):
+        raise ValueError("radius_ratio must be positive")
+    if np.any(summed_radius <= 0.0):
+        raise ValueError("summed_radius_to_semimajor_axis must be positive")
+    if np.any(np.abs(cosine_inclination) > 1.0):
+        raise ValueError("cosine_inclination must be between -1 and 1")
+
+    result = eval_modl(
+        time_days,
+        "PlanetarySystem",
+        pericomp=period_days,
+        epocmtracomp=transit_epoch_days,
+        rsmacomp=summed_radius,
+        cosicomp=cosine_inclination,
+        rratcomp=radius_ratio,
+        coeflmdk=limb_darkening_coefficients,
+        typelmdk="quad",
+        booldiag=False,
+        typeverb=0,
+    )
+    return result["rflx"][:, 0]
+
+
+def mutual_hill_separations(
+    period_days: np.ndarray,
+    planet_mass_earth: np.ndarray,
+    stellar_mass_solar: float,
+) -> np.ndarray:
+    """Return adjacent orbital separations in mutual Hill radii."""
+
+    period_days = np.asarray(period_days, dtype=float)
+    planet_mass_earth = np.asarray(planet_mass_earth, dtype=float)
+    if period_days.ndim != 1 or period_days.shape != planet_mass_earth.shape:
+        raise ValueError("period_days and planet_mass_earth must be matching arrays")
+    if period_days.size < 2 or np.any(np.diff(period_days) <= 0.0):
+        raise ValueError("period_days must contain at least two increasing values")
+    if np.any(planet_mass_earth <= 0.0) or stellar_mass_solar <= 0.0:
+        raise ValueError("planet and stellar masses must be positive")
+
+    semimajor_axis_scale = period_days ** (2.0 / 3.0)
+    earth_to_solar_mass = 3.0035e-6
+    adjacent_mass_ratio = (
+        earth_to_solar_mass
+        * (planet_mass_earth[:-1] + planet_mass_earth[1:])
+        / (3.0 * stellar_mass_solar)
+    ) ** (1.0 / 3.0)
+    mutual_hill_radius = (
+        0.5 * (semimajor_axis_scale[:-1] + semimajor_axis_scale[1:]) * adjacent_mass_ratio
+    )
+    return np.diff(semimajor_axis_scale) / mutual_hill_radius
+
+
 def derive_transit_features(
     time_days: np.ndarray,
     relative_flux: np.ndarray,

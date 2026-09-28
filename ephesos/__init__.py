@@ -3,8 +3,10 @@
 from .main import *  # noqa: F401,F403
 from .models import (
     derive_transit_features,
+    evaluate_multiplanet_transit_model,
     evaluate_projected_occultor_model,
     evaluate_transit_model,
+    mutual_hill_separations,
 )
 from .paths import get_data_path, get_repository_path, get_visuals_path
 from .visualization import (

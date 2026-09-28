@@ -46,6 +46,7 @@ Examples
 
     python examples/minimal_transit.py --typefileplot png
     python examples/arbitrary_occultor.py
+    python examples/compact_multiplanet.py
     python examples/run_WhiteDwarf.py
     python examples/run_WASP43.py
     python examples/run_population.py
