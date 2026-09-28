@@ -38,7 +38,7 @@ python examples/minimal_transit/minimal_transit.py --typefileplot png
 The curve is a deterministic prediction under these assumptions. It contains no
 observed or randomly generated data. The model produces a 1.13% transit depth.
 
-Maintained single-system examples write compact GIFs without external data or
+Single-system examples write compact GIFs without external data or
 command-line animation tools. The population example writes a static corner plot
 of features derived from the synthesized light curves.
 
@@ -146,12 +146,12 @@ curve. That window defaults to three measured transit durations and can be set
 explicitly with `history_duration` in the time-axis units.
 
 ## Model diagnostics
-A useful forward-model run should make the following visible:
+Ephesos diagnostics show:
 
 - the input system geometry and stellar properties
 - the intermediate brightness model or limb-darkening assumptions
 - the resulting relative flux light curve
 - any residuals or model comparison diagnostics
 
-This makes the scientific assumptions directly inspectable.
+Together these products expose the assumptions that determine the modeled light curve.
 
