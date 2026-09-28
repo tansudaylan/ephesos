@@ -6,7 +6,9 @@ import numpy as np
 from PIL import Image
 
 
-EXAMPLE_PATH = Path(__file__).parents[1] / "examples" / "minimal_transit.py"
+EXAMPLE_PATH = (
+    Path(__file__).parents[1] / "examples" / "minimal_transit" / "minimal_transit.py"
+)
 SPEC = importlib.util.spec_from_file_location("minimal_transit", EXAMPLE_PATH)
 minimal_transit = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(minimal_transit)

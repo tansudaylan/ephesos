@@ -37,6 +37,25 @@ def test_multiplanet_model_contains_repeated_transits() -> None:
     assert transit_starts.size >= 4
 
 
+def test_self_lensing_model_produces_symmetric_brightening() -> None:
+    time_days = np.linspace(-0.5, 0.5, 101)  # [day]
+
+    relative_flux = ephesos.evaluate_self_lensing_model(
+        time_days,
+        period_days=30.0,  # [day]
+        source_radius_solar=1.0,
+        source_mass_solar=1.0,
+        lens_mass_solar=0.6,
+        impact_parameter=0.2,
+        grid_size=301,
+    )
+
+    assert np.isfinite(relative_flux).all()
+    assert np.argmax(relative_flux) == time_days.size // 2
+    assert np.allclose(relative_flux, relative_flux[::-1], atol=1e-12)
+    assert np.max(relative_flux) > 1.0005
+
+
 def test_mutual_hill_separations_identify_pairwise_stable_spacing() -> None:
     separations = ephesos.mutual_hill_separations(
         np.array((1.0, 1.5, 2.25)),  # [day]
@@ -69,6 +88,38 @@ def test_projected_occultor_models_have_equal_area_depths(occultor_type: str) ->
     assert relative_flux[1] == pytest.approx(expected_midtransit_flux, abs=2e-4)
 
 
+def test_custom_projected_occultor_uses_benchmark_radius_coordinates() -> None:
+    coordinates = np.linspace(-1.5, 1.5, 301)
+    image_x, image_y = np.meshgrid(coordinates, coordinates)
+    circle = image_x**2 + image_y**2 <= 1.0
+    logo = circle | ((image_x > 0.8) & (np.abs(image_y) < 0.2))
+    time_days = np.linspace(-0.08, 0.08, 81)  # [day]
+    arguments = {
+        "period_days": 4.0,  # [day]
+        "equivalent_radius_ratio": 0.09,
+        "summed_radius_to_semimajor_axis": 0.12,
+        "cosine_inclination": 0.03,
+        "grid_size": 301,
+    }
+
+    logo_flux = ephesos.evaluate_projected_occultor_model(
+        time_days,
+        occultor_type="custom",
+        custom_occultor_mask=logo,
+        custom_occultor_extent=(-1.5, 1.5, -1.5, 1.5),
+        **arguments,
+    )
+    circle_flux = ephesos.evaluate_projected_occultor_model(
+        time_days,
+        occultor_type="disk",
+        **arguments,
+    )
+
+    assert np.isfinite(logo_flux).all()
+    assert np.min(logo_flux) < np.min(circle_flux)
+    assert not np.allclose(logo_flux, logo_flux[::-1])
+
+
 def test_derive_transit_features_recovers_trapezoid_observables() -> None:
     time_days = np.arange(-3.0, 4.0) / 24.0  # [day]
     relative_flux = np.array((1.0, 0.995, 0.99, 0.99, 0.99, 0.995, 1.0))
@@ -76,6 +127,21 @@ def test_derive_transit_features_recovers_trapezoid_observables() -> None:
     features = ephesos.derive_transit_features(time_days, relative_flux)
 
     assert features == pytest.approx((1.0, 5.996, 117.6, 2.4))
+
+
+def test_derive_transit_feature_departures_compare_with_matched_benchmark() -> None:
+    time_days = np.arange(-3.0, 4.0) / 24.0  # [day]
+    benchmark_flux = np.array((1.0, 0.995, 0.99, 0.99, 0.99, 0.995, 1.0))
+    candidate_flux = np.array((1.0, 0.994, 0.988, 0.988, 0.988, 0.994, 1.0))
+
+    departures = ephesos.derive_transit_feature_departures(
+        time_days, candidate_flux, benchmark_flux
+    )
+
+    assert departures == pytest.approx((0.2, 0.0, 0.0, 0.48))
+    assert ephesos.derive_transit_feature_departures(
+        time_days, benchmark_flux, benchmark_flux
+    ) == pytest.approx(np.zeros(4))
 
 
 @pytest.mark.parametrize(

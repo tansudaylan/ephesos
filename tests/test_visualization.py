@@ -7,6 +7,7 @@ from PIL import Image
 
 import ephesos
 from ephesos.visualization import (
+    _animation_frame_repetitions,
     _estimate_transit_duration,
     _select_animation_frame_indices,
     _trailing_window_limits,
@@ -56,6 +57,22 @@ def test_trailing_window_ends_at_current_time() -> None:
     limits = _trailing_window_limits(time_hours, frame_index=60, history_duration=2.5)
 
     assert limits == pytest.approx((3.5, 6.0))
+
+
+def test_animation_slowdown_prioritizes_transit_states() -> None:
+    projected_x = np.array(((2.0, 1.05, 0.0), (2.0, 2.0, 0.0)))
+    projected_y = np.zeros_like(projected_x)
+
+    repetitions = _animation_frame_repetitions(
+        projected_x,
+        projected_y,
+        np.array((0.1, 0.1)),
+        transit_slowdown=2,
+        ingress_egress_slowdown=4,
+        simultaneous_transit_slowdown=6,
+    )
+
+    assert np.array_equal(repetitions, (1, 4, 6))
 
 
 @pytest.mark.parametrize("typefileplot", ("png", "pdf"))
@@ -174,6 +191,33 @@ def test_save_light_curve_animation_has_model_and_comparison_panels(
         assert np.std(frame[:, : frame.shape[1] // 2]) > 20.0
 
 
+def test_save_light_curve_animation_renders_custom_occultor(tmp_path: Path) -> None:
+    time_hours, relative_flux = sample_light_curve()
+    coordinates = np.linspace(-1.5, 1.5, 101)
+    image_x, image_y = np.meshgrid(coordinates, coordinates)
+    custom_mask = (image_x**2 + image_y**2 <= 1.0) | (
+        (image_x > 0.8) & (np.abs(image_y) < 0.2)
+    )
+    output_path = tmp_path / "custom.gif"
+
+    ephesos.save_light_curve_animation(
+        time_hours,
+        relative_flux,
+        output_path,
+        title="Custom transiter",
+        period=24.0,  # [hour]
+        radius_ratio=0.1,
+        summed_radius_to_semimajor_axis=0.1,
+        occultor_type="custom",
+        custom_occultor_mask=custom_mask,
+        custom_occultor_extent=(-1.5, 1.5, -1.5, 1.5),
+        max_frames=5,
+    )
+
+    with Image.open(output_path) as animation:
+        assert animation.n_frames > 1
+
+
 def test_save_light_curve_animation_rejects_mismatched_comparison(tmp_path: Path) -> None:
     time_hours, relative_flux = sample_light_curve()
 
@@ -215,6 +259,17 @@ def test_save_light_curve_animation_rejects_invalid_history_options(tmp_path: Pa
             summed_radius_to_semimajor_axis=0.1,
             light_curve_mode="trailing",
             history_duration=0.0,
+        )
+    with pytest.raises(ValueError, match="slowdown factors"):
+        ephesos.save_light_curve_animation(
+            time_hours,
+            relative_flux,
+            tmp_path / "invalid.gif",
+            title="Deterministic transit",
+            period=24.0,  # [hour]
+            radius_ratio=0.1,
+            summed_radius_to_semimajor_axis=0.1,
+            transit_slowdown=1.5,
         )
 
 

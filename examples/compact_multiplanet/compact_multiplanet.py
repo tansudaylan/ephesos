@@ -60,6 +60,15 @@ def run_example(
         output_stem.with_name(f"{output_stem.name}_{mode}.gif") for mode in ("reveal", "trailing")
     )
     for mode, mode_output_path in zip(("reveal", "trailing"), output_paths):
+        slowdown_options = (
+            {
+                "transit_slowdown": 2,
+                "ingress_egress_slowdown": 4,
+                "simultaneous_transit_slowdown": 6,
+            }
+            if mode == "trailing"
+            else {}
+        )
         ephesos.save_light_curve_animation(
             time_days,
             relative_flux,
@@ -74,6 +83,7 @@ def run_example(
             time_label="Time [day]",
             max_frames=max_frames,
             light_curve_mode=mode,
+            **slowdown_options,
         )
     return time_days, relative_flux, output_paths
 

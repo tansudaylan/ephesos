@@ -152,6 +152,30 @@ def _trailing_window_limits(
     return current_time - history_duration, current_time
 
 
+def _animation_frame_repetitions(
+    projected_x: np.ndarray,
+    projected_y: np.ndarray,
+    occultor_radius: np.ndarray,
+    *,
+    transit_slowdown: int,
+    ingress_egress_slowdown: int,
+    simultaneous_transit_slowdown: int,
+) -> np.ndarray:
+    """Return state-aware frame repetitions from projected occultor geometry."""
+
+    projected_distance = np.hypot(projected_x, projected_y)
+    outer_contact = projected_distance <= 1.0 + occultor_radius[:, None]
+    full_transit = projected_distance <= np.maximum(1.0 - occultor_radius, 0.0)[:, None]
+    ingress_or_egress = outer_contact & ~full_transit
+    active_count = np.count_nonzero(outer_contact, axis=0)
+
+    repetitions = np.ones(projected_x.shape[1], dtype=int)
+    repetitions[np.any(outer_contact, axis=0)] = transit_slowdown
+    repetitions[np.any(ingress_or_egress, axis=0)] = ingress_egress_slowdown
+    repetitions[active_count >= 2] = simultaneous_transit_slowdown
+    return repetitions
+
+
 def _plot_colors(typeplotback: PlotBackground) -> dict[str, str]:
     """Return an accessible light-curve palette for the requested background."""
 
@@ -316,6 +340,8 @@ def save_light_curve_animation(
     limb_darkening_coefficients: tuple[float, float] = (0.4, 0.25),
     occultor_type: OccultorType = "disk",
     oblateness: float = 0.3,
+    custom_occultor_mask: np.ndarray | None = None,
+    custom_occultor_extent: tuple[float, float, float, float] = (-1.0, 1.0, -1.0, 1.0),
     comparison_relative_flux: np.ndarray | None = None,
     comparison_label: str = "Comparison model",
     comparison_models: dict[str, np.ndarray] | None = None,
@@ -326,6 +352,9 @@ def save_light_curve_animation(
     animation_dpi: int = 100,  # [dot inch^-1]
     light_curve_mode: LightCurveAnimationMode = "reveal",
     history_duration: float | None = None,
+    transit_slowdown: int = 1,
+    ingress_egress_slowdown: int = 1,
+    simultaneous_transit_slowdown: int = 1,
     typeplotback: PlotBackground = "white",
     font_size: float = 11.0,  # [point]
 ) -> Path:
@@ -377,15 +406,25 @@ def save_light_curve_animation(
         raise ValueError("history_duration must be positive")
     if light_curve_mode == "trailing" and history_duration is None:
         history_duration = 3.0 * _estimate_transit_duration(time, relative_flux)
+    slowdown_factors = (
+        transit_slowdown,
+        ingress_egress_slowdown,
+        simultaneous_transit_slowdown,
+    )
+    if any(not isinstance(factor, int) or factor < 1 for factor in slowdown_factors):
+        raise ValueError("animation slowdown factors must be positive integers")
     valid_occultor_types = (
         "disk",
         "oblate",
         "face_on_rings",
         "horizontal_rings",
         "vertical_rings",
+        "custom",
     )
     if occultor_type not in valid_occultor_types:
         raise ValueError(f"occultor_type must be one of {valid_occultor_types}")
+    if occultor_type == "custom" and custom_occultor_mask is None:
+        raise ValueError("custom_occultor_mask is required for a custom occultor")
 
     output_path = Path(output_path)
     if output_path.suffix.lower() != ".gif":
@@ -405,6 +444,19 @@ def save_light_curve_animation(
     projected_y = (
         semimajor_axis_stellar_radii[:, None] * cosine_inclination[:, None] * np.cos(orbital_phase)
     )
+    if occultor_type == "custom":
+        outer_radius_factor = max(abs(bound) for bound in custom_occultor_extent)
+    else:
+        outer_radius_factor = 1.75 if "rings" in occultor_type else 1.0
+    frame_repetitions = _animation_frame_repetitions(
+        projected_x,
+        projected_y,
+        outer_radius_factor * radius_ratio,
+        transit_slowdown=transit_slowdown,
+        ingress_egress_slowdown=ingress_egress_slowdown,
+        simultaneous_transit_slowdown=simultaneous_transit_slowdown,
+    )
+    animation_frame_indices = np.repeat(frame_indices, frame_repetitions[frame_indices])
 
     # Render the same quadratic limb-darkened stellar surface assumed by the model.
     image_limit = max(1.25, 1.1 * 1.75 * np.max(radius_ratio))
@@ -428,6 +480,7 @@ def save_light_curve_animation(
         facecolor=colors["background"],
         gridspec_kw={"width_ratios": (1.0, 1.45)},
     )
+    figure.suptitle(title, color=colors["foreground"], fontsize=font_size)
     model_image = image_axis.imshow(
         stellar_brightness,
         origin="lower",
@@ -441,7 +494,7 @@ def save_light_curve_animation(
     image_axis.set_ylim(-image_limit, image_limit)
     image_axis.set_xlabel(r"Sky position [$R_\star$]", fontsize=font_size)
     image_axis.set_ylabel(r"Sky position [$R_\star$]", fontsize=font_size)
-    image_axis.set_title(title, fontsize=font_size)
+    image_axis.set_title("Image", fontsize=font_size)
     image_axis.tick_params(colors=colors["foreground"], labelsize=font_size)
     image_axis.xaxis.label.set_color(colors["foreground"])
     image_axis.yaxis.label.set_color(colors["foreground"])
@@ -504,7 +557,7 @@ def save_light_curve_animation(
     legend.get_frame().set_edgecolor(colors["foreground"])
     for text in legend.get_texts():
         text.set_color(colors["foreground"])
-    figure.tight_layout()
+    figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.96))
 
     def update(frame_index: int):
         occulted = np.zeros_like(stellar_disk)
@@ -517,6 +570,8 @@ def save_light_curve_animation(
                 radius_ratio[companion_index],
                 occultor_type,
                 oblateness=oblateness,
+                custom_mask=custom_occultor_mask,
+                custom_mask_extent=custom_occultor_extent,
             )
         current_brightness = np.where(occulted, 0.0, stellar_brightness)
         model_image.set_data(current_brightness)
@@ -538,7 +593,7 @@ def save_light_curve_animation(
     animation = FuncAnimation(
         figure,
         update,
-        frames=frame_indices,
+        frames=animation_frame_indices,
         blit=light_curve_mode == "reveal",
     )
     print(f"Writing to {output_path}...")

@@ -2,9 +2,11 @@
 
 from .main import *  # noqa: F401,F403
 from .models import (
+    derive_transit_feature_departures,
     derive_transit_features,
     evaluate_multiplanet_transit_model,
     evaluate_projected_occultor_model,
+    evaluate_self_lensing_model,
     evaluate_transit_model,
     mutual_hill_separations,
 )
