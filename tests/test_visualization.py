@@ -6,7 +6,11 @@ import pytest
 from PIL import Image
 
 import ephesos
-from ephesos.visualization import _estimate_transit_duration, _select_animation_frame_indices
+from ephesos.visualization import (
+    _estimate_transit_duration,
+    _select_animation_frame_indices,
+    _trailing_window_limits,
+)
 
 
 def sample_light_curve() -> tuple[np.ndarray, np.ndarray]:
@@ -44,6 +48,14 @@ def test_animation_history_defaults_to_three_transit_durations() -> None:
     transit_duration = _estimate_transit_duration(time_hours, relative_flux)
 
     assert 3.0 * transit_duration == pytest.approx(0.6)
+
+
+def test_trailing_window_ends_at_current_time() -> None:
+    time_hours = np.linspace(0.0, 10.0, 101)  # [hour]
+
+    limits = _trailing_window_limits(time_hours, frame_index=60, history_duration=2.5)
+
+    assert limits == pytest.approx((3.5, 6.0))
 
 
 @pytest.mark.parametrize("typefileplot", ("png", "pdf"))

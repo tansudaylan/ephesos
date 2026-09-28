@@ -141,6 +141,17 @@ def _estimate_transit_duration(time: np.ndarray, relative_flux: np.ndarray) -> f
     return float(np.median(durations[durations > 0.0]))
 
 
+def _trailing_window_limits(
+    time: np.ndarray,
+    frame_index: int,
+    history_duration: float,
+) -> tuple[float, float]:
+    """Return a fixed-width viewport ending at the current animation time."""
+
+    current_time = float(time[frame_index])
+    return current_time - history_duration, current_time
+
+
 def _plot_colors(typeplotback: PlotBackground) -> dict[str, str]:
     """Return an accessible light-curve palette for the requested background."""
 
@@ -511,14 +522,25 @@ def save_light_curve_animation(
         model_image.set_data(current_brightness)
         stop = frame_index + 1
         if light_curve_mode == "trailing":
-            start = np.searchsorted(time, time[frame_index] - history_duration)
+            window_start, window_end = _trailing_window_limits(
+                time,
+                frame_index,
+                history_duration,
+            )
+            start = np.searchsorted(time, window_start)
+            curve_axis.set_xlim(window_start, window_end)
         else:
             start = 0
         model_line.set_data(time[start:stop], relative_flux[start:stop])
         current_point.set_data([time[frame_index]], [relative_flux[frame_index]])
         return model_image, model_line, current_point
 
-    animation = FuncAnimation(figure, update, frames=frame_indices, blit=True)
+    animation = FuncAnimation(
+        figure,
+        update,
+        frames=frame_indices,
+        blit=light_curve_mode == "reveal",
+    )
     print(f"Writing to {output_path}...")
     animation.save(
         output_path,
