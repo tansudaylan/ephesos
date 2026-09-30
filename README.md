@@ -59,7 +59,7 @@ python examples/transits_simultaneous/transits_simultaneous.py
 
 ## Notebook examples
 
-Four executable notebooks provide interactive entry points to complementary
+Five executable notebooks provide interactive entry points to complementary
 capabilities:
 
 - [`examples/capabilities/capabilities.ipynb`](examples/capabilities/capabilities.ipynb)
@@ -72,6 +72,8 @@ capabilities:
 	compares deterministic equal-area spherical and circumplanetary-disk silhouettes.
 - [`examples/emitting_companion/emitting_companion.ipynb`](examples/emitting_companion/emitting_companion.ipynb)
 	compares planetary emission levels and their secondary-eclipse depths.
+- [`examples/run_WASP43/run_WASP43.ipynb`](examples/run_WASP43/run_WASP43.ipynb)
+	displays a deterministic WASP-43 b transit prediction as an animation.
 
 Run each notebook from its own example directory. Figures are written directly
 to that directory's `visuals/` folder.
@@ -83,6 +85,8 @@ to that directory's `visuals/` folder.
 ![Equal-area circumplanetary-disk morphologies from the notebook pipeline](examples/PlanetsWithDisks/visuals/circumplanetary_disk_morphologies.png)
 
 ![Secondary eclipses from emitting planetary companions](examples/emitting_companion/visuals/emitting_companion.png)
+
+![WASP-43 b transit-model animation](examples/run_WASP43/run_WASP43.gif)
 
 Single-system animations are written beside their scripts. The population summary
 is written to `examples/run_population/population_features.png` and shows transit
