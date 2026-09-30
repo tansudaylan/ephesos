@@ -1,8 +1,9 @@
+from tdpy.verbosity import print
 import sys
 import os
 from pathlib import Path
 
-from tqdm import tqdm
+from tdpy.verbosity import tqdm
 
 import time as modutime
 

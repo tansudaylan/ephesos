@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Compare equal-area circumplanetary-disk transit morphologies."""
 
+from tdpy.verbosity import print
+
 import argparse
 from pathlib import Path
 

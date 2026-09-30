@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Compare toy self-lensing systems and finite-source effects."""
 
+from tdpy.verbosity import print
+
 import argparse
 from pathlib import Path
 

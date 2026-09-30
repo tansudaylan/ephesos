@@ -1,5 +1,7 @@
 """Visualization helpers for Ephesos model outputs."""
 
+from tdpy.verbosity import print
+
 from pathlib import Path
 from typing import Literal
 

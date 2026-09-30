@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Prepare compact Kepler self-lensing light curves from public archives."""
 
+from tdpy.verbosity import print
+
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from urllib.request import urlretrieve

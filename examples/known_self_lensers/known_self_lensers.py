@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Compare Kepler observations of known self-lensers with Ephesos models."""
 
+from tdpy.verbosity import print
+
 import argparse
 from dataclasses import dataclass
 from pathlib import Path

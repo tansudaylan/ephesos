@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Compare secondary eclipses from emitting planetary companions."""
 
+from tdpy.verbosity import print
+
 import argparse
 from pathlib import Path
 

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Animate the AstroMusers logo transiting against its circular core."""
 
+from tdpy.verbosity import print
+
 import argparse
 from pathlib import Path
 
