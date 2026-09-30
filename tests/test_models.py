@@ -194,3 +194,90 @@ def test_evaluate_transit_model_rejects_unphysical_values(
             np.linspace(-0.1, 0.1, 11),  # [day]
             **arguments,
         )
+
+
+@pytest.mark.parametrize(
+    ("evaluator", "arguments"),
+    (
+        (
+            ephesos.evaluate_transit_model,
+            {
+                "period_days": 3.0,
+                "radius_ratio": 0.1,
+                "summed_radius_to_semimajor_axis": 0.1,
+            },
+        ),
+        (
+            ephesos.evaluate_multiplanet_transit_model,
+            {
+                "period_days": np.array((2.0, 3.0)),
+                "transit_epoch_days": np.array((0.0, 0.5)),
+                "radius_ratio": np.array((0.1, 0.05)),
+                "summed_radius_to_semimajor_axis": np.array((0.1, 0.08)),
+                "cosine_inclination": np.array((0.0, 0.01)),
+            },
+        ),
+        (
+            ephesos.evaluate_self_lensing_model,
+            {
+                "period_days": 30.0,
+                "source_radius_solar": 1.0,
+                "source_mass_solar": 1.0,
+                "lens_mass_solar": 0.6,
+            },
+        ),
+        (
+            ephesos.evaluate_projected_occultor_model,
+            {
+                "period_days": 4.0,
+                "equivalent_radius_ratio": 0.09,
+                "summed_radius_to_semimajor_axis": 0.12,
+                "occultor_type": "disk",
+            },
+        ),
+    ),
+)
+@pytest.mark.parametrize(
+    "time_days",
+    (np.array((0.0,)), np.array((0.0, np.nan)), np.zeros((2, 2))),
+)
+def test_public_light_curve_models_share_time_validation(
+    evaluator,
+    arguments: dict,
+    time_days: np.ndarray,
+) -> None:
+    with pytest.raises(ValueError, match="time_days"):
+        evaluator(time_days, **arguments)
+
+
+@pytest.mark.parametrize(
+    "evaluator, arguments",
+    (
+        (
+            ephesos.evaluate_self_lensing_model,
+            {
+                "period_days": 30.0,
+                "source_radius_solar": 1.0,
+                "source_mass_solar": 1.0,
+                "lens_mass_solar": 0.6,
+            },
+        ),
+        (
+            ephesos.evaluate_projected_occultor_model,
+            {
+                "period_days": 4.0,
+                "equivalent_radius_ratio": 0.09,
+                "summed_radius_to_semimajor_axis": 0.12,
+                "occultor_type": "disk",
+            },
+        ),
+    ),
+)
+@pytest.mark.parametrize("grid_size", (100, 102))
+def test_gridded_models_share_grid_size_validation(
+    evaluator,
+    arguments: dict,
+    grid_size: int,
+) -> None:
+    with pytest.raises(ValueError, match="grid_size"):
+        evaluator(np.array((-0.1, 0.1)), grid_size=grid_size, **arguments)  # [day]

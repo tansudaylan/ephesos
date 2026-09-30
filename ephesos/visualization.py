@@ -12,6 +12,7 @@ from matplotlib.animation import FuncAnimation, PillowWriter
 import corner
 import numpy as np
 from PIL import Image
+from tdpy.exoplanet import quadratic_limb_darkened_stellar_grid
 
 from .geometry import OccultorType, projected_occultor_mask
 
@@ -460,18 +461,12 @@ def save_light_curve_animation(
 
     # Render the same quadratic limb-darkened stellar surface assumed by the model.
     image_limit = max(1.25, 1.1 * 1.75 * np.max(radius_ratio))
-    image_coordinates = np.linspace(-image_limit, image_limit, 181)
-    image_x, image_y = np.meshgrid(image_coordinates, image_coordinates)
-    radial_distance = np.sqrt(image_x**2 + image_y**2)
-    stellar_disk = radial_distance <= 1.0
-    cosine_emission_angle = np.sqrt(np.clip(1.0 - radial_distance**2, 0.0, 1.0))
-    linear_coefficient, quadratic_coefficient = limb_darkening_coefficients
-    stellar_brightness = np.zeros_like(radial_distance)
-    stellar_brightness[stellar_disk] = (
-        1.0
-        - linear_coefficient * (1.0 - cosine_emission_angle[stellar_disk])
-        - quadratic_coefficient * (1.0 - cosine_emission_angle[stellar_disk]) ** 2
+    image_x, image_y, radial_distance, stellar_brightness = quadratic_limb_darkened_stellar_grid(
+        181,
+        limb_darkening_coefficients,
+        image_limit=image_limit,
     )
+    stellar_disk = radial_distance <= 1.0
 
     figure, (image_axis, curve_axis) = plt.subplots(
         1,

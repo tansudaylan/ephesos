@@ -4,9 +4,26 @@ import numpy as np
 from astropy.constants import G, M_sun, R_sun, c
 from scipy.ndimage import map_coordinates
 from scipy.signal import fftconvolve
+from tdpy.exoplanet import quadratic_limb_darkened_stellar_grid
 
 from .geometry import OccultorType, projected_occultor_mask
 from .main import eval_modl
+
+
+def _validate_time_days(time_days: np.ndarray, minimum_size: int = 2) -> np.ndarray:
+    """Return a finite one-dimensional time array with enough samples."""
+
+    time_days = np.asarray(time_days, dtype=float)
+    if time_days.ndim != 1 or time_days.size < minimum_size or not np.isfinite(time_days).all():
+        raise ValueError("time_days must be a finite one-dimensional array")
+    return time_days
+
+
+def _validate_grid_size(grid_size: int) -> None:
+    """Require an odd grid with enough pixels to resolve the stellar disk."""
+
+    if grid_size < 101 or grid_size % 2 == 0:
+        raise ValueError("grid_size must be an odd integer of at least 101")
 
 
 def evaluate_transit_model(
@@ -21,9 +38,7 @@ def evaluate_transit_model(
 ) -> np.ndarray:
     """Evaluate one deterministic transit and return its relative flux."""
 
-    time_days = np.asarray(time_days, dtype=float)
-    if time_days.ndim != 1 or time_days.size < 2 or not np.isfinite(time_days).all():
-        raise ValueError("time_days must be a finite one-dimensional array")
+    time_days = _validate_time_days(time_days)
     if period_days <= 0.0:
         raise ValueError("period_days must be positive")
     if radius_ratio <= 0.0:
@@ -62,7 +77,7 @@ def evaluate_multiplanet_transit_model(
 ) -> np.ndarray:
     """Evaluate the combined light curve of multiple transiting planets."""
 
-    time_days = np.asarray(time_days, dtype=float)
+    time_days = _validate_time_days(time_days)
     parameters = tuple(
         np.asarray(parameter, dtype=float)
         for parameter in (
@@ -73,8 +88,6 @@ def evaluate_multiplanet_transit_model(
             cosine_inclination,
         )
     )
-    if time_days.ndim != 1 or time_days.size < 2 or not np.isfinite(time_days).all():
-        raise ValueError("time_days must be a finite one-dimensional array")
     if any(parameter.ndim != 1 for parameter in parameters):
         raise ValueError("planet parameters must be one-dimensional arrays")
     if len({parameter.size for parameter in parameters}) != 1 or parameters[0].size < 2:
@@ -121,15 +134,11 @@ def evaluate_self_lensing_model(
 ) -> np.ndarray:
     """Integrate point-lens magnification over a limb-darkened stellar disk."""
 
-    time_days = np.asarray(time_days, dtype=float)
-    if time_days.ndim != 1 or time_days.size < 2 or not np.isfinite(time_days).all():
-        raise ValueError("time_days must be a finite one-dimensional array")
+    time_days = _validate_time_days(time_days)
     if min(period_days, source_radius_solar, source_mass_solar, lens_mass_solar) <= 0.0:
         raise ValueError("period, radii, and masses must be positive")
     if impact_parameter < 0.0:
         raise ValueError("impact_parameter must be nonnegative")
-    if grid_size < 101 or grid_size % 2 == 0:
-        raise ValueError("grid_size must be an odd integer of at least 101")
 
     period_seconds = period_days * 86400.0  # [s]
     total_mass = (source_mass_solar + lens_mass_solar) * M_sun
@@ -139,21 +148,13 @@ def evaluate_self_lensing_model(
     einstein_radius = np.sqrt(4.0 * G * lens_mass_solar * M_sun * semimajor_axis / c**2)
     einstein_radius_ratio = (einstein_radius / source_radius).decompose().value
 
-    coordinates = np.linspace(-1.0, 1.0, grid_size)
-    image_x, image_y = np.meshgrid(coordinates, coordinates)
-    radial_distance = np.hypot(image_x, image_y)
-    stellar_disk = radial_distance <= 1.0
-    cosine_emission_angle = np.sqrt(np.clip(1.0 - radial_distance**2, 0.0, 1.0))
-    linear_coefficient, quadratic_coefficient = limb_darkening_coefficients
-    stellar_brightness = np.zeros_like(radial_distance)
-    stellar_brightness[stellar_disk] = (
-        1.0
-        - linear_coefficient * (1.0 - cosine_emission_angle[stellar_disk])
-        - quadratic_coefficient * (1.0 - cosine_emission_angle[stellar_disk]) ** 2
+    _validate_grid_size(grid_size)
+    image_x, image_y, radial_distance, stellar_brightness = (
+        quadratic_limb_darkened_stellar_grid(grid_size, limb_darkening_coefficients)
     )
-    unocculted_flux = np.sum(stellar_brightness)
+    unocculted_flux = stellar_brightness.sum()
 
-    pixel_size = coordinates[1] - coordinates[0]
+    pixel_size = 2.0 / (grid_size - 1)
     normalized_separation = np.maximum(radial_distance, 0.5 * pixel_size) / einstein_radius_ratio
     magnification_kernel = (normalized_separation**2 + 2.0) / (
         normalized_separation * np.sqrt(normalized_separation**2 + 4.0)
@@ -278,29 +279,16 @@ def evaluate_projected_occultor_model(
 ) -> np.ndarray:
     """Integrate a limb-darkened transit for an area-normalized projected shape."""
 
-    time_days = np.asarray(time_days, dtype=float)
-    if time_days.ndim != 1 or time_days.size < 2 or not np.isfinite(time_days).all():
-        raise ValueError("time_days must be a finite one-dimensional array")
+    time_days = _validate_time_days(time_days)
     if period_days <= 0.0:
         raise ValueError("period_days must be positive")
     if summed_radius_to_semimajor_axis <= 0.0:
         raise ValueError("summed_radius_to_semimajor_axis must be positive")
     if not -1.0 <= cosine_inclination <= 1.0:
         raise ValueError("cosine_inclination must be between -1 and 1")
-    if grid_size < 101 or grid_size % 2 == 0:
-        raise ValueError("grid_size must be an odd integer of at least 101")
-
-    coordinates = np.linspace(-1.0, 1.0, grid_size)
-    image_x, image_y = np.meshgrid(coordinates, coordinates)
-    radial_distance = np.sqrt(image_x**2 + image_y**2)
-    stellar_disk = radial_distance <= 1.0
-    cosine_emission_angle = np.sqrt(np.clip(1.0 - radial_distance**2, 0.0, 1.0))
-    linear_coefficient, quadratic_coefficient = limb_darkening_coefficients
-    stellar_brightness = np.zeros_like(radial_distance)
-    stellar_brightness[stellar_disk] = (
-        1.0
-        - linear_coefficient * (1.0 - cosine_emission_angle[stellar_disk])
-        - quadratic_coefficient * (1.0 - cosine_emission_angle[stellar_disk]) ** 2
+    _validate_grid_size(grid_size)
+    image_x, image_y, _, stellar_brightness = quadratic_limb_darkened_stellar_grid(
+        grid_size, limb_darkening_coefficients
     )
     unocculted_flux = stellar_brightness.sum()
 
