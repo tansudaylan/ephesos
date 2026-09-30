@@ -149,8 +149,8 @@ def evaluate_self_lensing_model(
     einstein_radius_ratio = (einstein_radius / source_radius).decompose().value
 
     _validate_grid_size(grid_size)
-    image_x, image_y, radial_distance, stellar_brightness = (
-        quadratic_limb_darkened_stellar_grid(grid_size, limb_darkening_coefficients)
+    image_x, image_y, radial_distance, stellar_brightness = quadratic_limb_darkened_stellar_grid(
+        grid_size, limb_darkening_coefficients
     )
     unocculted_flux = stellar_brightness.sum()
 
