@@ -2101,7 +2101,7 @@ def eval_modl( \
                     if gdat.typebrgtcomp != 'dark':
                         gdat.xposgridsphr[j] = gdat.xposgridcomp[j]
                         gdat.zposgridsphr[j] = gdat.yposgridcomp[j]
-                        gdat.yposgridsphr[j] = np.empty_like(gdat.xposgridsphr[j])
+                        gdat.yposgridsphr[j] = np.zeros_like(gdat.xposgridsphr[j])
                     
                         temp = gdat.rratcomp[j]**2 - gdat.xposgridsphr[j]**2 - gdat.zposgridsphr[j]**2
                         # indices of companion grid where this will not produce NaNs due to being outside of the companion

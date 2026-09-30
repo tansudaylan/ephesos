@@ -65,6 +65,48 @@ def evaluate_transit_model(
     return relative_flux
 
 
+def evaluate_emitting_companion_model(
+    time_days: np.ndarray,
+    *,
+    period_days: float,
+    radius_ratio: float,
+    summed_radius_to_semimajor_axis: float,
+    companion_brightness_ratio: float,
+    cosine_inclination: float = 0.0,
+    limb_darkening_coefficients: np.ndarray | None = None,
+) -> np.ndarray:
+    """Evaluate transit, planetary emission, and secondary eclipse."""
+
+    time_days = _validate_time_days(time_days)
+    if period_days <= 0.0:
+        raise ValueError("period_days must be positive")
+    if radius_ratio <= 0.0:
+        raise ValueError("radius_ratio must be positive")
+    if summed_radius_to_semimajor_axis <= 0.0:
+        raise ValueError("summed_radius_to_semimajor_axis must be positive")
+    if companion_brightness_ratio < 0.0:
+        raise ValueError("companion_brightness_ratio must be nonnegative")
+    if not -1.0 <= cosine_inclination <= 1.0:
+        raise ValueError("cosine_inclination must be between -1 and 1")
+
+    result = eval_modl(
+        time_days,
+        "PlanetarySystemEmittingCompanion",
+        pericomp=np.array([period_days]),  # [day]
+        epocmtracomp=np.array([0.0]),  # [day]
+        rsmacomp=np.array([summed_radius_to_semimajor_axis]),
+        cosicomp=np.array([cosine_inclination]),
+        rratcomp=np.array([radius_ratio]),
+        typebrgtcomp="isot",
+        ratibrgtcomp=np.array([companion_brightness_ratio]),
+        coeflmdk=limb_darkening_coefficients,
+        typelmdk="quad",
+        booldiag=False,
+        typeverb=0,
+    )
+    return result["rflx"][:, 0]
+
+
 def evaluate_multiplanet_transit_model(
     time_days: np.ndarray,
     *,

@@ -42,13 +42,14 @@ background by default and accept ``typeplotback="dark"``.
 Examples
 --------
 
-The self-lensing example compares white-dwarf, neutron-star, and black-hole toy
-systems and isolates the effects of limb darkening and projected alignment. The
-known-self-lenser example overlays public Kepler observations of KOI-3278 and
-KIC 8145411 with Ephesos circular finite-source predictions based on published
-system parameters. The latter predictions are approximations because the
-current interface omits eccentric motion, finite-lens occultation, dilution,
-and cadence integration.
+The emitting-companion example shows how planetary surface brightness sets the
+secondary-eclipse depth. The self-lensing example compares white-dwarf,
+neutron-star, and black-hole toy systems and isolates the effects of limb
+darkening and projected alignment. The known-self-lenser example overlays
+public Kepler observations of KOI-3278 and KIC 8145411 with Ephesos circular
+finite-source predictions based on published system parameters. The latter
+predictions are approximations because the current interface omits eccentric
+motion, finite-lens occultation, dilution, and cadence integration.
 
 .. code-block:: bash
 
@@ -57,6 +58,7 @@ and cadence integration.
     python examples/arbitrary_occultor/arbitrary_occultor.py
     python examples/astromusers_logo_occultor/astromusers_logo_occultor.py
     python examples/compact_multiplanet/compact_multiplanet.py
+    python examples/emitting_companion/emitting_companion.py
     python examples/known_self_lensers/known_self_lensers.py
     python examples/run_WhiteDwarf/run_WhiteDwarf.py
     python examples/run_WASP43/run_WASP43.py

@@ -19,6 +19,43 @@ def test_evaluate_transit_model_returns_finite_transit() -> None:
     assert relative_flux.min() < 0.99
 
 
+def test_emitting_companion_model_contains_secondary_eclipse() -> None:
+    time_days = np.linspace(-0.5, 0.5, 401)  # [day]
+    common_arguments = {
+        "period_days": 1.0,  # [day]
+        "radius_ratio": 0.1,
+        "summed_radius_to_semimajor_axis": 0.2,
+    }
+
+    dim_flux = ephesos.evaluate_emitting_companion_model(
+        time_days,
+        companion_brightness_ratio=0.002,
+        **common_arguments,
+    )
+    bright_flux = ephesos.evaluate_emitting_companion_model(
+        time_days,
+        companion_brightness_ratio=0.01,
+        **common_arguments,
+    )
+
+    assert np.isfinite(bright_flux).all()
+    assert bright_flux.shape == time_days.shape
+    assert bright_flux[time_days.size // 2] < 0.99
+    assert bright_flux[0] == pytest.approx(1.0, abs=1e-10)
+    assert bright_flux[time_days.size // 4] > dim_flux[time_days.size // 4]
+
+
+def test_emitting_companion_model_rejects_negative_brightness() -> None:
+    with pytest.raises(ValueError, match="companion_brightness_ratio"):
+        ephesos.evaluate_emitting_companion_model(
+            np.linspace(-0.5, 0.5, 11),  # [day]
+            period_days=1.0,  # [day]
+            radius_ratio=0.1,
+            summed_radius_to_semimajor_axis=0.2,
+            companion_brightness_ratio=-0.01,
+        )
+
+
 def test_multiplanet_model_contains_repeated_transits() -> None:
     time_days = np.linspace(0.0, 4.0, 1921)  # [day]
     relative_flux = ephesos.evaluate_multiplanet_transit_model(

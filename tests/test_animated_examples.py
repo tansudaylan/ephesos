@@ -118,6 +118,28 @@ def test_self_lensing_example_writes_brightening_figure(tmp_path):
         assert image.width > image.height
 
 
+def test_emitting_companion_example_resolves_secondary_eclipse(tmp_path):
+    example = load_example("emitting_companion")
+
+    orbital_phase, relative_flux, output_path = example.run_example(
+        tmp_path / "emitting_companion.png"
+    )
+
+    eclipse_index = np.argmin(np.abs(orbital_phase - 0.5))
+    quadrature_index = np.argmin(np.abs(orbital_phase - 0.25))
+    quadrature_flux = []
+    for flux in relative_flux.values():
+        assert flux.shape == orbital_phase.shape
+        assert np.isfinite(flux).all()
+        assert flux[eclipse_index] == pytest.approx(1.0, abs=1e-10)
+        quadrature_flux.append(flux[quadrature_index])
+    assert np.all(np.diff(quadrature_flux) > 0.0)
+    assert output_path.is_file() and output_path.stat().st_size > 10_000
+    with Image.open(output_path) as image:
+        assert image.n_frames == 1
+        assert image.width > image.height
+
+
 def test_known_self_lensers_compare_kepler_data_with_models(tmp_path):
     example = load_example("known_self_lensers")
 
@@ -218,7 +240,13 @@ def test_astromusers_logo_transit_compares_with_circular_core(tmp_path):
 
 @pytest.mark.parametrize(
     "name",
-    ("run_WASP43", "run_population", "known_self_lensers", "PlanetsWithDisks"),
+    (
+        "run_WASP43",
+        "run_population",
+        "known_self_lensers",
+        "PlanetsWithDisks",
+        "emitting_companion",
+    ),
 )
 def test_notebook_code_is_current_and_valid(name):
     path, notebook, code = load_notebook(name)
@@ -226,7 +254,7 @@ def test_notebook_code_is_current_and_valid(name):
     compile(code, str(path), "exec")
     assert f"from {name} import" in code
     assert "run_example" in code
-    if name in ("known_self_lensers", "PlanetsWithDisks"):
+    if name in ("known_self_lensers", "PlanetsWithDisks", "emitting_companion"):
         assert 'Path("visuals/' in code
         assert notebook["metadata"]["language_info"]["name"] == "python"
 
@@ -236,6 +264,7 @@ def test_capabilities_notebook_covers_public_models_and_validation():
 
     compile(code, str(path), "exec")
     assert "evaluate_transit_model" in code
+    assert "evaluate_emitting_companion_model" in code
     assert "evaluate_self_lensing_model" in code
     assert "evaluate_projected_occultor_model" in code
     assert "test_capability_outputs" in code

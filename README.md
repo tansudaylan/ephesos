@@ -48,6 +48,7 @@ python examples/PlanetsWithDisks/PlanetsWithDisks.py
 python examples/arbitrary_occultor/arbitrary_occultor.py
 python examples/astromusers_logo_occultor/astromusers_logo_occultor.py
 python examples/compact_multiplanet/compact_multiplanet.py
+python examples/emitting_companion/emitting_companion.py
 python examples/known_self_lensers/known_self_lensers.py
 python examples/run_WhiteDwarf/run_WhiteDwarf.py
 python examples/run_WASP43/run_WASP43.py
@@ -58,7 +59,7 @@ python examples/transits_simultaneous/transits_simultaneous.py
 
 ## Notebook examples
 
-Three executable notebooks provide interactive entry points to complementary
+Four executable notebooks provide interactive entry points to complementary
 capabilities:
 
 - [`examples/capabilities/capabilities.ipynb`](examples/capabilities/capabilities.ipynb)
@@ -69,6 +70,8 @@ capabilities:
 	compares bundled public Kepler observations with Ephesos self-lensing models.
 - [`examples/PlanetsWithDisks/PlanetsWithDisks.ipynb`](examples/PlanetsWithDisks/PlanetsWithDisks.ipynb)
 	compares deterministic equal-area spherical and circumplanetary-disk silhouettes.
+- [`examples/emitting_companion/emitting_companion.ipynb`](examples/emitting_companion/emitting_companion.ipynb)
+	compares planetary emission levels and their secondary-eclipse depths.
 
 Run each notebook from its own example directory. Figures are written directly
 to that directory's `visuals/` folder.
@@ -78,6 +81,8 @@ to that directory's `visuals/` folder.
 ![Known Kepler self-lensers from the notebook pipeline](examples/known_self_lensers/visuals/known_self_lensers.png)
 
 ![Equal-area circumplanetary-disk morphologies from the notebook pipeline](examples/PlanetsWithDisks/visuals/circumplanetary_disk_morphologies.png)
+
+![Secondary eclipses from emitting planetary companions](examples/emitting_companion/visuals/emitting_companion.png)
 
 Single-system animations are written beside their scripts. The population summary
 is written to `examples/run_population/population_features.png` and shows transit
