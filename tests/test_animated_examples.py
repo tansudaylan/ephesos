@@ -22,6 +22,18 @@ def load_example(name):
     return module
 
 
+def load_notebook(name):
+    path = EXAMPLE_DIRECTORY / name / f"{name}.ipynb"
+    print(f"Reading from {path}...")
+    notebook = json.loads(path.read_text())
+    code = "\n".join(
+        "\n".join(cell["source"])
+        for cell in notebook["cells"]
+        if cell["cell_type"] == "code"
+    )
+    return path, notebook, code
+
+
 @pytest.mark.parametrize(
     "name",
     ("arbitrary_occultor", "run_WhiteDwarf", "run_WASP43"),
@@ -204,14 +216,29 @@ def test_astromusers_logo_transit_compares_with_circular_core(tmp_path):
         assert animation.n_frames > 1
 
 
-@pytest.mark.parametrize("name", ("run_WASP43", "run_population"))
+@pytest.mark.parametrize(
+    "name",
+    ("run_WASP43", "run_population", "known_self_lensers", "PlanetsWithDisks"),
+)
 def test_notebook_code_is_current_and_valid(name):
-    path = EXAMPLE_DIRECTORY / name / f"{name}.ipynb"
-    print(f"Reading from {path}...")
-    notebook = json.loads(path.read_text())
-    code = "\n".join(
-        "\n".join(cell["source"]) for cell in notebook["cells"] if cell["cell_type"] == "code"
-    )
+    path, notebook, code = load_notebook(name)
 
     compile(code, str(path), "exec")
-    assert f"from {name} import run_example" in code
+    assert f"from {name} import" in code
+    assert "run_example" in code
+    if name in ("known_self_lensers", "PlanetsWithDisks"):
+        assert 'Path("visuals/' in code
+        assert notebook["metadata"]["language_info"]["name"] == "python"
+
+
+def test_capabilities_notebook_covers_public_models_and_validation():
+    path, notebook, code = load_notebook("capabilities")
+
+    compile(code, str(path), "exec")
+    assert "evaluate_transit_model" in code
+    assert "evaluate_self_lensing_model" in code
+    assert "evaluate_projected_occultor_model" in code
+    assert "test_capability_outputs" in code
+    assert "benchmark_results" in code
+    assert 'Path("visuals")' in code
+    assert notebook["metadata"]["language_info"]["name"] == "python"

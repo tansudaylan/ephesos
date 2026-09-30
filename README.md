@@ -56,6 +56,29 @@ python examples/self_lensing/self_lensing.py
 python examples/transits_simultaneous/transits_simultaneous.py
 ```
 
+## Notebook examples
+
+Three executable notebooks provide interactive entry points to complementary
+capabilities:
+
+- [`examples/capabilities/capabilities.ipynb`](examples/capabilities/capabilities.ipynb)
+	inspects the installed API, evaluates transit, self-lensing, and projected-ring
+	models, checks failure behavior, and benchmarks representative calls using
+	deterministic simulated systems.
+- [`examples/known_self_lensers/known_self_lensers.ipynb`](examples/known_self_lensers/known_self_lensers.ipynb)
+	compares bundled public Kepler observations with Ephesos self-lensing models.
+- [`examples/PlanetsWithDisks/PlanetsWithDisks.ipynb`](examples/PlanetsWithDisks/PlanetsWithDisks.ipynb)
+	compares deterministic equal-area spherical and circumplanetary-disk silhouettes.
+
+Run each notebook from its own example directory. Figures are written directly
+to that directory's `visuals/` folder.
+
+![Transit, projected-ring, and self-lensing capability comparison](examples/capabilities/visuals/capability_comparison.png)
+
+![Known Kepler self-lensers from the notebook pipeline](examples/known_self_lensers/visuals/known_self_lensers.png)
+
+![Equal-area circumplanetary-disk morphologies from the notebook pipeline](examples/PlanetsWithDisks/visuals/circumplanetary_disk_morphologies.png)
+
 Single-system animations are written beside their scripts. The population summary
 is written to `examples/run_population/population_features.png` and shows transit
 depth, total duration, ingress duration, and equivalent width for 2,048 deterministic
