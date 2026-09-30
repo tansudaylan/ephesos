@@ -1930,7 +1930,7 @@ def eval_modl( \
 
             elif gdat.typesyst == 'CompactObjectStellarCompanion':
                 
-                gdat.radieins = chalcedon.retr_radieinssbin(gdat.masscomp, gdat.smaxcompasun) / gdat.radistar
+                gdat.radieins = chalcedon.retr_radieinsfromsmax(gdat.masscomp, gdat.smaxcompasun) / gdat.radistar
                 gdat.wdthslen = np.minimum(2. * gdat.radieins, np.ones_like(gdat.masscomp))
                 
                 if gdat.typeverb > 1:

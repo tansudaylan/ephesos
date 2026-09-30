@@ -4,6 +4,7 @@ import numpy as np
 from astropy.constants import G, M_sun, R_sun, c
 from scipy.ndimage import map_coordinates
 from scipy.signal import fftconvolve
+from chalcedon import evaluate_self_lensing_model
 from tdpy.exoplanet import quadratic_limb_darkened_stellar_grid
 
 from .geometry import OccultorType, projected_occultor_mask
@@ -161,70 +162,6 @@ def evaluate_multiplanet_transit_model(
         typeverb=0,
     )
     return result["rflx"][:, 0]
-
-
-def evaluate_self_lensing_model(
-    time_days: np.ndarray,
-    *,
-    period_days: float,
-    source_radius_solar: float,
-    source_mass_solar: float,
-    lens_mass_solar: float,
-    impact_parameter: float = 0.0,
-    limb_darkening_coefficients: tuple[float, float] = (0.4, 0.25),
-    grid_size: int = 301,
-) -> np.ndarray:
-    """Integrate point-lens magnification over a limb-darkened stellar disk."""
-
-    time_days = _validate_time_days(time_days)
-    if min(period_days, source_radius_solar, source_mass_solar, lens_mass_solar) <= 0.0:
-        raise ValueError("period, radii, and masses must be positive")
-    if impact_parameter < 0.0:
-        raise ValueError("impact_parameter must be nonnegative")
-
-    period_seconds = period_days * 86400.0  # [s]
-    total_mass = (source_mass_solar + lens_mass_solar) * M_sun
-    semimajor_axis = (G * total_mass * period_seconds**2 / (4.0 * np.pi**2)) ** (1.0 / 3.0)
-    source_radius = source_radius_solar * R_sun
-    semimajor_axis_source_radii = (semimajor_axis / source_radius).decompose().value
-    einstein_radius = np.sqrt(4.0 * G * lens_mass_solar * M_sun * semimajor_axis / c**2)
-    einstein_radius_ratio = (einstein_radius / source_radius).decompose().value
-
-    _validate_grid_size(grid_size)
-    image_x, image_y, radial_distance, stellar_brightness = quadratic_limb_darkened_stellar_grid(
-        grid_size, limb_darkening_coefficients
-    )
-    unocculted_flux = stellar_brightness.sum()
-
-    pixel_size = 2.0 / (grid_size - 1)
-    normalized_separation = np.maximum(radial_distance, 0.5 * pixel_size) / einstein_radius_ratio
-    magnification_kernel = (normalized_separation**2 + 2.0) / (
-        normalized_separation * np.sqrt(normalized_separation**2 + 4.0)
-    )
-    excess_flux_grid = fftconvolve(
-        stellar_brightness,
-        magnification_kernel - 1.0,
-        mode="full",
-    )
-
-    orbital_phase = 2.0 * np.pi * time_days / period_days
-    lens_x = semimajor_axis_source_radii * np.sin(orbital_phase)
-    lens_y = impact_parameter * np.cos(orbital_phase)
-    pixels_per_stellar_radius = 0.5 * (grid_size - 1)
-    sample_coordinates = np.vstack(
-        (
-            lens_y * pixels_per_stellar_radius + grid_size - 1,
-            lens_x * pixels_per_stellar_radius + grid_size - 1,
-        )
-    )
-    excess_flux = map_coordinates(
-        excess_flux_grid,
-        sample_coordinates,
-        order=1,
-        mode="constant",
-        cval=0.0,
-    )
-    return 1.0 + excess_flux / unocculted_flux
 
 
 def mutual_hill_separations(
