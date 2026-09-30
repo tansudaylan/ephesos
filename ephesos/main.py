@@ -2726,49 +2726,6 @@ def eval_modl( \
             maxm = gdat.numbphaseval[0] - 1
         indxtimeimaglfov = np.linspace(0., maxm, numbimaglfov).astype(int)
         
-        # calculate the positions in the global time grid if no light curve is being calculated or if the light curve calculation was done in over the evaluation times
-        # to be deleted?
-        if False and gdat.boolintp:
-            for t in gdat.indxtime:
-                for j in gdat.indxcomp:
-                    xpos, ypos, zpos, anommean, anomecce, anomtrue = retr_diststarcompfromphas_efes(gdat, j, t, gdat.phascomp[j][t])
-                        
-                    gdat.xposcompgridstar[j] = xpos
-                    gdat.yposcompgridstar[j] = ypos
-                    gdat.zposcompgridstar[j] = zpos
-                    
-                    gdat.dictvarborbt['posicompgridprim'][t, j, 0] = gdat.xposcompgridstar[j]
-                    gdat.dictvarborbt['posicompgridprim'][t, j, 1] = gdat.yposcompgridstar[j]
-                    gdat.dictvarborbt['posicompgridprim'][t, j, 2] = gdat.zposcompgridstar[j]
-                    gdat.dictvarborbt['anomtrue'][t, j] = anomtrue
-        
-            if gdat.booldiag:
-                liststrg = ['x', 'y', 'z']
-                for j in gdat.indxcomp:
-                    for a in range(3):
-                        if (gdat.pericomp[j] < (gdat.time[-1] - gdat.time[0])) and (not (gdat.dictvarborbt['posicompgridprim'][:, j, a] > 0).any() or 
-                            not (gdat.dictvarborbt['posicompgridprim'][:, j, a] < 0).any()) and not (gdat.dictvarborbt['posicompgridprim'][:, j, a] == 0).all():
-                            print('')
-                            print('')
-                            print('')
-                            print('gdat.dictvarborbt[anomtrue][:, j]')
-                            summgene(gdat.dictvarborbt['anomtrue'][:, j])
-                            print('gdat.dictvarborbt[posicompgridprim][:, j, a]')
-                            summgene(gdat.dictvarborbt['posicompgridprim'][:, j, a])
-                            raise Exception('All values are one-sided for %s-axis!' % liststrg[a])
-            
-                if gdat.typecoor == 'star':
-                    for j in gdat.indxcomp:
-                        if gdat.xposcompgridstar[j].size == 0:
-                            print('')
-                            print('')
-                            print('')
-                            print('j')
-                            print(j)
-                            print('gdat.xposcompgridstar[j]')
-                            summgene(gdat.xposcompgridstar[j])
-                            raise Exception('gdat.xposcompgridstar[j] is empty!')
-
         #gdat.listsegm = [[] for j in gdat.indxcomp]
         gdat.numbsegmfade = 10
         gdat.indxsegmfade = np.arange(gdat.numbsegmfade)
