@@ -5,9 +5,12 @@ from .models import (
     derive_transit_feature_departures,
     derive_transit_features,
     evaluate_emitting_companion_model,
+    evaluate_linear_transit_times,
     evaluate_multiplanet_transit_model,
+    evaluate_nbody_transit_times,
     evaluate_projected_occultor_model,
     evaluate_self_lensing_model,
+    evaluate_sinusoidal_ttv,
     evaluate_transit_model,
     mutual_hill_separations,
 )

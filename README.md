@@ -8,6 +8,18 @@ The core workflow evaluates sky-projected brightness through `ephesos.eval_modl(
 The concise `ephesos.evaluate_transit_model()` interface covers deterministic
 single-companion transit calculations.
 
+Ephesos also predicts transit times. `evaluate_linear_transit_times(epochs, epoch_time,
+orbital_period)` gives a linear ephemeris; `evaluate_sinusoidal_ttv(epochs, offset,
+phase, amplitude, ttv_period)` gives a timing residual with the same time units as
+its offset and amplitude. `evaluate_nbody_transit_times(planet_parameters,
+stellar_mass_solar, start_time_days, step_days, step_count)` uses `ttvfast` and
+returns each planet's predicted epoch indices and times in days. Each row of
+`planet_parameters` contains mass, period, eccentricity, inclination, longitude
+of ascending node, argument of periapsis, and mean anomaly in `ttvfast`'s units.
+Missing transit events are excluded without renumbering subsequent epochs. The
+sinusoidal residual is descriptive rather than a dynamical interaction model;
+the N-body calculation requires the optional `ttvfast` integrator.
+
 ## Light-curve modeling
 Ephesos predicts light curves from explicit orbital geometry, companion
 sizes, surface-brightness profiles, and limb-darkening assumptions.
@@ -19,6 +31,8 @@ cd /path/to/ephesos
 pip install -e .
 export EPHESOS_PATH=/path/to/ephesos
 ```
+
+For N-body transit-time predictions, install `pip install -e '.[ttv]'`.
 
 `EPHESOS_PATH` identifies the repository root. Runtime inputs belong under `data/`.
 Generated pipeline outputs belong under `visuals/`. Git ignores both directories.

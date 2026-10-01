@@ -11,6 +11,41 @@ from .geometry import OccultorType, projected_occultor_mask
 from .main import eval_modl
 
 
+def evaluate_linear_transit_times(transit_epoch, epoch_time, orbital_period):
+    """Predict a linear transit ephemeris in the units of epoch_time and orbital_period."""
+
+    return epoch_time + orbital_period * np.asarray(transit_epoch)
+
+
+def evaluate_sinusoidal_ttv(transit_epoch, offset, phase, amplitude, ttv_period):
+    """Predict sinusoidal transit-timing residuals in the units of offset and amplitude."""
+
+    return offset + amplitude * np.sin(
+        phase + 2.0 * np.pi * np.asarray(transit_epoch) / ttv_period
+    )
+
+
+def evaluate_nbody_transit_times(planet_parameters, stellar_mass_solar, start_time_days,
+                                 step_days, step_count):
+    """Predict each planet's transit times using the optional ttvfast integrator."""
+
+    import ttvfast
+
+    planets = [ttvfast.models.Planet(*parameters) for parameters in planet_parameters]
+    results = ttvfast.ttvfast(
+        planets, stellar_mass_solar, start_time_days, step_days, step_count
+    )
+    planet_indices = np.asarray(results['positions'][0])
+    transit_epochs = np.asarray(results['positions'][1])
+    transit_times = np.asarray(results['positions'][2])
+    predictions = []
+    for planet_index in range(len(planets)):
+        valid = (planet_indices == planet_index) & (transit_times != -2.0)
+        order = np.argsort(transit_epochs[valid])
+        predictions.append((transit_epochs[valid][order], transit_times[valid][order]))
+    return predictions
+
+
 def _validate_time_days(time_days: np.ndarray, minimum_size: int = 2) -> np.ndarray:
     """Return a finite one-dimensional time array with enough samples."""
 

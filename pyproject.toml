@@ -36,6 +36,7 @@ dependencies = [
 
 [project.optional-dependencies]
 plotting = ["miletos"]
+ttv = ["ttvfast"]
 
 [tool.setuptools.packages.find]
 include = ["ephesos*"]

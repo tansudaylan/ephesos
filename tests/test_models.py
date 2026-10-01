@@ -1,7 +1,42 @@
+import sys
+from types import SimpleNamespace
+
 import numpy as np
 import pytest
 
 import ephesos
+
+
+def test_sinusoidal_ttv_predicts_periodic_timing_residuals() -> None:
+    epochs = np.array([0.0, 2.0, 4.0, 6.0])
+    np.testing.assert_allclose(
+        ephesos.evaluate_sinusoidal_ttv(epochs, 1.0, 0.0, 2.0, 8.0),
+        [1.0, 3.0, 1.0, -1.0],
+    )
+
+
+def test_nbody_ttv_adapter_keeps_planet_order_and_discards_missing_transits(monkeypatch) -> None:
+    calls = []
+
+    def integrate(planets, stellar_mass, start, step, count):
+        calls.append((planets, stellar_mass, start, step, count))
+        return {'positions': ([0, 1, 0, 1, 0], [0, 0, 1, 1, 2],
+                              [1.0, 2.0, -2.0, 4.0, 5.0])}
+
+    monkeypatch.setitem(sys.modules, 'ttvfast', SimpleNamespace(
+        models=SimpleNamespace(Planet=lambda *parameters: parameters),
+        ttvfast=integrate,
+    ))
+    predictions = ephesos.evaluate_nbody_transit_times(
+        [(1.0,), (2.0,)], 0.4, 0.0, 0.03, 700
+    )
+
+    np.testing.assert_array_equal(predictions[0][0], [0, 2])
+    np.testing.assert_array_equal(predictions[0][1], [1.0, 5.0])  # [day]
+    np.testing.assert_array_equal(predictions[1][0], [0, 1])
+    np.testing.assert_array_equal(predictions[1][1], [2.0, 4.0])  # [day]
+    assert calls[0][0] == [(1.0,), (2.0,)]
+    assert calls[0][1:] == (0.4, 0.0, 0.03, 700)
 
 
 def test_evaluate_transit_model_returns_finite_transit() -> None:
