@@ -4,6 +4,7 @@
 from tdpy.verbosity import print
 
 import argparse
+from tdpy.cli import add_plot_arguments
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -82,7 +83,7 @@ def run_example(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--typefileplot", choices=("png", "pdf"), default="png")
+    add_plot_arguments(parser)
     arguments = parser.parse_args()
     output_path = Path(__file__).with_name("visuals") / "emitting_companion.png"
     run_example(output_path, typefileplot=arguments.typefileplot)

@@ -4,6 +4,7 @@
 from tdpy.verbosity import print
 
 import argparse
+from tdpy.cli import add_plot_arguments
 from pathlib import Path
 
 import matplotlib
@@ -127,7 +128,7 @@ def main() -> int:
         type=Path,
         default=Path(__file__).with_name("self_lensing.png"),
     )
-    parser.add_argument("--typefileplot", choices=("png", "pdf"), default="png")
+    add_plot_arguments(parser)
     arguments = parser.parse_args()
     run_example(arguments.output_path, typefileplot=arguments.typefileplot)
     return 0
