@@ -4,6 +4,7 @@ from .main import *  # noqa: F401,F403
 from .models import (
     derive_transit_feature_departures,
     derive_transit_features,
+    evaluate_compact_object_signatures,
     evaluate_emitting_companion_model,
     evaluate_linear_transit_times,
     evaluate_multiplanet_transit_model,

@@ -128,6 +128,40 @@ def test_self_lensing_model_produces_symmetric_brightening() -> None:
     assert np.max(relative_flux) > 1.0005
 
 
+def test_compact_object_signatures_match_reference_values() -> None:
+    signatures = ephesos.evaluate_compact_object_signatures(
+        np.array([0.3, 30.0])[:, None],  # [day]
+        np.array([5.0, 180.0])[None, :],  # [solar mass]
+    )
+
+    np.testing.assert_allclose(
+        signatures["beaming"],
+        [[6.333641, 23.529050], [1.364542, 5.069180]],
+        rtol=1e-6,
+    )
+    np.testing.assert_allclose(
+        signatures["ellipsoidal"],
+        [[124.113475, 148.113266], [0.012411, 0.014811]],
+        rtol=5e-5,
+    )
+    np.testing.assert_allclose(
+        signatures["self_lensing"],
+        [[0.291121, 32.625129], [6.272018, 702.887070]],
+        rtol=1e-6,
+    )
+
+
+@pytest.mark.parametrize(
+    "period_days, companion_mass_solar",
+    [(0.0, 5.0), (1.0, -5.0), (np.nan, 5.0)],
+)
+def test_compact_object_signatures_reject_invalid_inputs(
+    period_days: float, companion_mass_solar: float
+) -> None:
+    with pytest.raises(ValueError, match="finite|positive"):
+        ephesos.evaluate_compact_object_signatures(period_days, companion_mass_solar)
+
+
 def test_mutual_hill_separations_identify_pairwise_stable_spacing() -> None:
     separations = ephesos.mutual_hill_separations(
         np.array((1.0, 1.5, 2.25)),  # [day]

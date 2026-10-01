@@ -1,6 +1,8 @@
 """Concise public wrappers around the Ephesos forward model."""
 
 import numpy as np
+import chalcedon
+import nicomedia
 from astropy.constants import G, M_sun, R_sun, c
 from scipy.ndimage import map_coordinates
 from scipy.signal import fftconvolve
@@ -9,6 +11,56 @@ from tdpy.exoplanet import quadratic_limb_darkened_stellar_grid
 
 from .geometry import OccultorType, projected_occultor_mask
 from .main import eval_modl
+
+
+def evaluate_compact_object_signatures(
+    period_days,
+    companion_mass_solar,
+    stellar_radius_solar=1.0,  # [R_Sun]
+    stellar_mass_solar=1.0,  # [M_Sun]
+    stellar_density_cgs=1.41,  # [g cm^-3]
+) -> dict[str, np.ndarray]:
+    """Predict compact-object beaming, ellipsoidal, and self-lensing amplitudes in ppt."""
+
+    parameters = np.broadcast_arrays(
+        *(
+            np.asarray(value, dtype=float)
+            for value in (
+                period_days,
+                companion_mass_solar,
+                stellar_radius_solar,
+                stellar_mass_solar,
+                stellar_density_cgs,
+            )
+        )
+    )
+    if not all(np.isfinite(value).all() for value in parameters):
+        raise ValueError("Compact-object signature inputs must be finite.")
+    if any(np.any(value <= 0.0) for value in parameters):
+        raise ValueError("Periods, masses, radii, and density must be positive.")
+
+    (
+        period_days,
+        companion_mass_solar,
+        stellar_radius_solar,
+        stellar_mass_solar,
+        stellar_density_cgs,
+    ) = parameters
+    return {
+        "beaming": np.asarray(
+            nicomedia.retr_deptbeam(period_days, stellar_mass_solar, companion_mass_solar)
+        ),
+        "ellipsoidal": np.asarray(
+            nicomedia.retr_deptelli(
+                period_days, stellar_density_cgs, stellar_mass_solar, companion_mass_solar
+            )
+        ),
+        "self_lensing": np.asarray(
+            chalcedon.retr_amplslen(
+                period_days, stellar_radius_solar, companion_mass_solar, stellar_mass_solar
+            )
+        ),
+    }
 
 
 def evaluate_linear_transit_times(transit_epoch, epoch_time, orbital_period):
