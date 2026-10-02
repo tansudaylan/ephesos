@@ -194,6 +194,26 @@ def test_projected_occultor_models_have_equal_area_depths(occultor_type: str) ->
     assert relative_flux[1] == pytest.approx(expected_midtransit_flux, abs=2e-4)
 
 
+def test_projected_occultor_blocks_only_at_foreground_conjunction():
+    period_days = 4.0  # [day]
+    time_days = np.linspace(0.0, period_days, 401)  # [day]
+
+    relative_flux = ephesos.evaluate_projected_occultor_model(
+        time_days,
+        period_days=period_days,
+        equivalent_radius_ratio=0.09,
+        summed_radius_to_semimajor_axis=0.12,
+        occultor_type="disk",
+        cosine_inclination=0.0,
+        limb_darkening_coefficients=(0.0, 0.0),
+        grid_size=301,
+    )
+
+    assert relative_flux[0] < 1.0
+    assert relative_flux[-1] < 1.0
+    assert relative_flux[200] == pytest.approx(1.0)
+
+
 def test_custom_projected_occultor_uses_benchmark_radius_coordinates() -> None:
     coordinates = np.linspace(-1.5, 1.5, 301)
     image_x, image_y = np.meshgrid(coordinates, coordinates)

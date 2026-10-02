@@ -343,7 +343,7 @@ def evaluate_projected_occultor_model(
     custom_occultor_mask: np.ndarray | None = None,
     custom_occultor_extent: tuple[float, float, float, float] = (-1.0, 1.0, -1.0, 1.0),
 ) -> np.ndarray:
-    """Integrate a limb-darkened transit for an area-normalized projected shape."""
+    """Integrate a limb-darkened transit only while the occultor is in front."""
 
     time_days = _validate_time_days(time_days)
     if period_days <= 0.0:
@@ -362,6 +362,7 @@ def evaluate_projected_occultor_model(
     orbital_phase = 2.0 * np.pi * time_days / period_days
     projected_x = semimajor_axis_stellar_radii * np.sin(orbital_phase)
     projected_y = semimajor_axis_stellar_radii * cosine_inclination * np.cos(orbital_phase)
+    line_of_sight = semimajor_axis_stellar_radii * np.sqrt(1.0 - cosine_inclination**2) * np.cos(orbital_phase)
 
     # Correlate once, then interpolate the blocked flux at subpixel positions.
     # This avoids staircase artifacts from re-rasterizing a hard mask at each time.
@@ -395,4 +396,5 @@ def evaluate_projected_occultor_model(
         mode="constant",
         cval=0.0,
     )
+    blocked_flux = np.where(line_of_sight > 0.0, blocked_flux, 0.0)
     return 1.0 - blocked_flux / unocculted_flux

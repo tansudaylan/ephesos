@@ -121,16 +121,21 @@ def retr_lumistartran(gdat, typecoor, boolrofi=None, indxpixlrofi=None, j=None):
     '''
     
     if indxpixlrofi is not None and boolrofi is not None:
-        raise Exception('')
-
-    if indxpixlrofi is None:
-        if boolrofi is not None:
-            indxgridrofi = np.where(boolrofi)
+        raise ValueError('Provide either boolrofi or indxpixlrofi, not both.')
+    if indxpixlrofi is not None:
+        indxgridrofi = np.asarray(indxpixlrofi)
+    elif boolrofi is not None:
+        indxgridrofi = np.where(np.asarray(boolrofi, dtype=bool))
+    else:
+        indxgridrofi = None
 
     if gdat.typeverb > 1:
         print('retr_lumistartran()')
-        print('indxgridrofi[0]')
-        summgene(indxgridrofi[0])
+        if indxgridrofi is None:
+            print('Using the full brightness grid.')
+        else:
+            print('indxgridrofi')
+            print(indxgridrofi)
     
     lumistartrangrid = retr_lumistartranrofi(gdat, typecoor, indxgridrofi, j)
     
@@ -915,7 +920,7 @@ def proc_modl(gdat, typeeval, j, t):
             
             # calculate the brightness inside the companion grid
             gdat.indxgridcompinsdprim = np.where(gdat.boolgridcompinsdprim)
-            gdat.lumistarplan = np.sum(retr_lumistartran(gdat, 'comp', indxgridrofi=gdat.indxgridcompinsdprim, j=j))
+            gdat.lumistarplan = np.sum(retr_lumistartran(gdat, 'comp', indxpixlrofi=gdat.indxgridcompinsdprim, j=j))
             
             fluxtotlfram = np.sum(gdat.brgtlens) + gdat.lumistarnocc - gdat.lumistarplan
             
