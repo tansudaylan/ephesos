@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 import nicomedia
 import ephesos
+from ephesos.paths import get_data_path
 import pergamon
 from tdpy import summgene
 import miletos
@@ -17,7 +18,7 @@ Compute the relative flux light curves of systems of bodies drawn from a populat
 """
 
 # path of the folder for visuals
-pathbase = os.environ["EPHESOS_DATA_PATH"] + "/"
+pathbase = str(get_data_path()) + os.sep
 pathpopl = pathbase + "Differences/"
 
 # fix the seed
