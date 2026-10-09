@@ -153,6 +153,97 @@ def evaluate_transit_model(
     return relative_flux
 
 
+def evaluate_exomoon_transit_model(
+    time_days: np.ndarray,
+    *,
+    planet_period_days: float,
+    planet_radius_ratio: float,
+    summed_radius_to_semimajor_axis: float,
+    moon_radius_ratio: float,
+    moon_separation_planet_radii: float,
+    moon_period_days: float,
+    moon_orbital_phase_radians: float = 0.0,
+    cosine_inclination: float = 0.0,
+    limb_darkening_coefficients: tuple[float, float] = (0.4, 0.25),
+    grid_size: int = 301,
+) -> np.ndarray:
+    """Evaluate a circular, coplanar planet-moon transit on a stellar image grid."""
+
+    time_days = _validate_time_days(time_days)  # [day]
+    _validate_grid_size(grid_size)
+    if not np.isfinite((
+        planet_period_days,
+        planet_radius_ratio,
+        summed_radius_to_semimajor_axis,
+        moon_radius_ratio,
+        moon_separation_planet_radii,
+        moon_period_days,
+        moon_orbital_phase_radians,
+        cosine_inclination,
+        *limb_darkening_coefficients,
+    )).all():
+        raise ValueError("exomoon model parameters must be finite")
+    if planet_period_days <= 0.0 or moon_period_days <= 0.0:
+        raise ValueError("planet_period_days and moon_period_days must be positive")
+    if planet_radius_ratio <= 0.0:
+        raise ValueError("planet_radius_ratio must be positive")
+    if moon_radius_ratio < 0.0:
+        raise ValueError("moon_radius_ratio must be nonnegative")
+    if moon_separation_planet_radii <= 0.0:
+        raise ValueError("moon_separation_planet_radii must be positive")
+    if summed_radius_to_semimajor_axis <= 0.0:
+        raise ValueError("summed_radius_to_semimajor_axis must be positive")
+    if not -1.0 <= cosine_inclination <= 1.0:
+        raise ValueError("cosine_inclination must be between -1 and 1")
+    if not np.isfinite(moon_orbital_phase_radians):
+        raise ValueError("moon_orbital_phase_radians must be finite")
+
+    image_x, image_y, _, stellar_brightness = quadratic_limb_darkened_stellar_grid(
+        grid_size, limb_darkening_coefficients
+    )
+    unocculted_flux = stellar_brightness.sum()
+    planet_semimajor_axis_stellar_radii = (
+        1.0 + planet_radius_ratio
+    ) / summed_radius_to_semimajor_axis  # [R_star]
+    moon_separation_stellar_radii = (
+        moon_separation_planet_radii * planet_radius_ratio
+    )  # [R_star]
+    planet_phase = 2.0 * np.pi * time_days / planet_period_days  # [rad]
+    moon_phase = (
+        2.0 * np.pi * time_days / moon_period_days + moon_orbital_phase_radians
+    )  # [rad]
+    inclination_sine = np.sqrt(1.0 - cosine_inclination**2)
+    planet_x = planet_semimajor_axis_stellar_radii * np.sin(planet_phase)  # [R_star]
+    planet_y = (
+        planet_semimajor_axis_stellar_radii * cosine_inclination * np.cos(planet_phase)
+    )  # [R_star]
+    planet_z = (
+        planet_semimajor_axis_stellar_radii * inclination_sine * np.cos(planet_phase)
+    )  # [R_star]
+    moon_x = moon_separation_stellar_radii * np.sin(moon_phase)  # [R_star]
+    moon_y = moon_separation_stellar_radii * cosine_inclination * np.cos(moon_phase)  # [R_star]
+    moon_z = moon_separation_stellar_radii * inclination_sine * np.cos(moon_phase)  # [R_star]
+
+    relative_flux = np.ones(time_days.size)
+    for time_index in range(time_days.size):
+        occulted = np.zeros(stellar_brightness.shape, dtype=bool)
+        if planet_z[time_index] > 0.0:
+            occulted |= (
+                (image_x - planet_x[time_index]) ** 2
+                + (image_y - planet_y[time_index]) ** 2
+                <= planet_radius_ratio**2
+            )
+        if moon_radius_ratio > 0.0 and planet_z[time_index] + moon_z[time_index] > 0.0:
+            moon_center_x = planet_x[time_index] + moon_x[time_index]  # [R_star]
+            moon_center_y = planet_y[time_index] + moon_y[time_index]  # [R_star]
+            occulted |= (
+                (image_x - moon_center_x) ** 2 + (image_y - moon_center_y) ** 2
+                <= moon_radius_ratio**2
+            )
+        relative_flux[time_index] -= stellar_brightness[occulted].sum() / unocculted_flux
+    return relative_flux
+
+
 def evaluate_emitting_companion_model(
     time_days: np.ndarray,
     *,
@@ -382,6 +473,123 @@ def evaluate_projected_occultor_model(
         occultor_kernel,
         mode="full",
     )
+    pixels_per_stellar_radius = 0.5 * (grid_size - 1)
+    sample_coordinates = np.vstack(
+        (
+            projected_y * pixels_per_stellar_radius + grid_size - 1,
+            projected_x * pixels_per_stellar_radius + grid_size - 1,
+        )
+    )
+    blocked_flux = map_coordinates(
+        blocked_flux_grid,
+        sample_coordinates,
+        order=1,
+        mode="constant",
+        cval=0.0,
+    )
+    blocked_flux = np.where(line_of_sight > 0.0, blocked_flux, 0.0)
+    return 1.0 - blocked_flux / unocculted_flux
+
+
+def evaluate_planet_with_disk_model(
+    time_days: np.ndarray,
+    *,
+    period_days: float,
+    planet_radius_ratio: float,
+    summed_radius_to_semimajor_axis: float,
+    disk_inner_radius_planet_radii: float,
+    disk_outer_radius_planet_radii: float,
+    disk_inclination_degrees: float,
+    disk_optical_depth: float,
+    cosine_inclination: float = 0.0,
+    disk_position_angle_degrees: float = 0.0,
+    limb_darkening_coefficients: tuple[float, float] = (0.4, 0.25),
+    grid_size: int = 301,
+) -> np.ndarray:
+    """Evaluate a transit across an opaque planet and a uniform thin disk annulus."""
+
+    time_days = _validate_time_days(time_days)  # [day]
+    _validate_grid_size(grid_size)
+    if not np.isfinite((
+        period_days,
+        planet_radius_ratio,
+        summed_radius_to_semimajor_axis,
+        disk_inner_radius_planet_radii,
+        disk_outer_radius_planet_radii,
+        disk_inclination_degrees,
+        disk_optical_depth,
+        cosine_inclination,
+        disk_position_angle_degrees,
+        *limb_darkening_coefficients,
+    )).all():
+        raise ValueError("planet-disk model parameters must be finite")
+    if period_days <= 0.0 or planet_radius_ratio <= 0.0:
+        raise ValueError("period_days and planet_radius_ratio must be positive")
+    if summed_radius_to_semimajor_axis <= 0.0:
+        raise ValueError("summed_radius_to_semimajor_axis must be positive")
+    if not 1.0 <= disk_inner_radius_planet_radii < disk_outer_radius_planet_radii:
+        raise ValueError("disk radii must satisfy 1 <= inner radius < outer radius")
+    if not 0.0 <= disk_inclination_degrees <= 90.0:
+        raise ValueError("disk_inclination_degrees must be between 0 and 90")
+    if disk_optical_depth < 0.0 or not np.isfinite(disk_optical_depth):
+        raise ValueError("disk_optical_depth must be finite and nonnegative")
+    if not np.isfinite(disk_position_angle_degrees):
+        raise ValueError("disk_position_angle_degrees must be finite")
+    if not -1.0 <= cosine_inclination <= 1.0:
+        raise ValueError("cosine_inclination must be between -1 and 1")
+
+    image_x, image_y, _, stellar_brightness = quadratic_limb_darkened_stellar_grid(
+        grid_size, limb_darkening_coefficients
+    )
+    unocculted_flux = stellar_brightness.sum()
+    disk_inclination_radians = np.deg2rad(disk_inclination_degrees)  # [rad]
+    disk_cosine_inclination = np.cos(disk_inclination_radians)
+    position_angle_radians = np.deg2rad(disk_position_angle_degrees)  # [rad]
+    rotated_x = (
+        image_x * np.cos(position_angle_radians)
+        + image_y * np.sin(position_angle_radians)
+    )  # [R_star]
+    rotated_y = (
+        -image_x * np.sin(position_angle_radians)
+        + image_y * np.cos(position_angle_radians)
+    )  # [R_star]
+    disk_radius_planet_radii = np.sqrt(
+        rotated_x**2
+        + (rotated_y / max(disk_cosine_inclination, 1e-12)) ** 2
+    ) / planet_radius_ratio
+    ring_mask = (
+        (disk_radius_planet_radii >= disk_inner_radius_planet_radii)
+        & (disk_radius_planet_radii <= disk_outer_radius_planet_radii)
+    )
+    planet_mask = image_x**2 + image_y**2 <= planet_radius_ratio**2
+    line_of_sight_optical_depth = disk_optical_depth / max(
+        disk_cosine_inclination, 1e-12
+    )
+    occultor_transmission = np.ones(stellar_brightness.shape)
+    occultor_transmission[planet_mask] = 0.0
+    occultor_transmission[ring_mask & ~planet_mask] = np.exp(
+        -line_of_sight_optical_depth
+    )
+    blocked_flux_kernel = 1.0 - occultor_transmission
+    blocked_flux_grid = fftconvolve(
+        stellar_brightness,
+        0.5 * (blocked_flux_kernel + blocked_flux_kernel[::-1, ::-1]),
+        mode="full",
+    )
+
+    planet_semimajor_axis_stellar_radii = (
+        1.0 + planet_radius_ratio
+    ) / summed_radius_to_semimajor_axis  # [R_star]
+    orbital_phase = 2.0 * np.pi * time_days / period_days  # [rad]
+    projected_x = planet_semimajor_axis_stellar_radii * np.sin(orbital_phase)  # [R_star]
+    projected_y = (
+        planet_semimajor_axis_stellar_radii * cosine_inclination * np.cos(orbital_phase)
+    )  # [R_star]
+    line_of_sight = (
+        planet_semimajor_axis_stellar_radii
+        * np.sqrt(1.0 - cosine_inclination**2)
+        * np.cos(orbital_phase)
+    )  # [R_star]
     pixels_per_stellar_radius = 0.5 * (grid_size - 1)
     sample_coordinates = np.vstack(
         (

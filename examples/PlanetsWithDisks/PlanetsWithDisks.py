@@ -103,7 +103,7 @@ def main() -> int:
     parser.add_argument(
         "--output-path",
         type=Path,
-        default=Path(__file__).with_name("PlanetsWithDisks.png"),
+        default=Path(__file__).parent / "visuals" / "circumplanetary_disk_morphologies.png",
     )
     arguments = parser.parse_args()
     run_example(arguments.output_path)

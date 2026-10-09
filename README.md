@@ -24,6 +24,17 @@ the N-body calculation requires the optional `ttvfast` integrator.
 Ephesos predicts light curves from explicit orbital geometry, companion
 sizes, surface-brightness profiles, and limb-darkening assumptions.
 
+`evaluate_exomoon_transit_model()` combines a circular, coplanar planet and moon
+on a limb-darkened stellar image grid. It accepts their radii and the moon's
+orbital separation and period. `evaluate_planet_with_disk_model()` combines an
+opaque planet with a thin, uniform annulus, including disk inclination, position
+angle, and normal optical depth. The moon model holds the planet's stellar orbit
+fixed, omits the planet's reflex motion, and does not enforce orbital stability.
+The disk model omits scattering, vertical structure, and radial opacity
+variations. The moon calculation scales as the number of time samples times the
+square of the image-grid size; the disk calculation uses a single grid
+convolution followed by interpolation at each time sample.
+
 ## Installation
 
 ```bash
@@ -59,6 +70,7 @@ of features derived from the synthesized light curves.
 ```bash
 python examples/minimal_transit/minimal_transit.py
 python examples/PlanetsWithDisks/PlanetsWithDisks.py
+python examples/exomoon/exomoon.py
 python examples/arbitrary_occultor/arbitrary_occultor.py
 python examples/astromusers_logo_occultor/astromusers_logo_occultor.py
 python examples/compact_multiplanet/compact_multiplanet.py
@@ -84,6 +96,8 @@ capabilities:
 	compares bundled public Kepler observations with Ephesos self-lensing models.
 - [`examples/PlanetsWithDisks/PlanetsWithDisks.ipynb`](examples/PlanetsWithDisks/PlanetsWithDisks.ipynb)
 	compares deterministic equal-area spherical and circumplanetary-disk silhouettes.
+- [`examples/exomoon/exomoon.ipynb`](examples/exomoon/exomoon.ipynb)
+	compares toy leading- and trailing-moon transits with a matched planet-only model.
 - [`examples/emitting_companion/emitting_companion.ipynb`](examples/emitting_companion/emitting_companion.ipynb)
 	compares planetary emission levels and their secondary-eclipse depths.
 - [`examples/run_WASP43/run_WASP43.ipynb`](examples/run_WASP43/run_WASP43.ipynb)
@@ -97,6 +111,17 @@ to that directory's `visuals/` folder.
 ![Known Kepler self-lensers from the notebook pipeline](examples/known_self_lensers/visuals/known_self_lensers.png)
 
 ![Equal-area circumplanetary-disk morphologies from the notebook pipeline](examples/PlanetsWithDisks/visuals/circumplanetary_disk_morphologies.png)
+
+The exomoon example evaluates deterministic circular, coplanar planet-moon
+geometries on a limb-darkened stellar grid. Its illustrative moon has a radius
+of 0.28 planetary radii, an orbital separation of five planetary radii, and a
+0.5-day orbital period. Leading and trailing orbital phases produce different
+pre- and post-planet flux deficits. These curves are simulated examples, not
+fits to observations or a dynamically self-consistent population. The grid
+calculation scales with the number of time samples and the square of its pixel
+count.
+
+![Toy leading- and trailing-moon transits](examples/exomoon/visuals/exomoon_transits.png)
 
 ![Secondary eclipses from emitting planetary companions](examples/emitting_companion/visuals/emitting_companion.png)
 

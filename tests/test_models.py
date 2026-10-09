@@ -54,6 +54,84 @@ def test_evaluate_transit_model_returns_finite_transit() -> None:
     assert relative_flux.min() < 0.99
 
 
+def test_exomoon_transit_model_has_planet_only_limit_and_moon_signal() -> None:
+    time_days = np.linspace(-0.15, 0.15, 121)  # [day]
+    arguments = {
+        "planet_period_days": 4.0,  # [day]
+        "planet_radius_ratio": 0.09,
+        "summed_radius_to_semimajor_axis": 0.1,
+        "moon_separation_planet_radii": 5.0,
+        "moon_period_days": 0.5,  # [day]
+        "moon_orbital_phase_radians": np.pi / 2.0,  # [rad]
+        "grid_size": 151,
+    }
+
+    planet_only_flux = ephesos.evaluate_exomoon_transit_model(
+        time_days, moon_radius_ratio=0.0, **arguments
+    )
+    exomoon_flux = ephesos.evaluate_exomoon_transit_model(
+        time_days, moon_radius_ratio=0.025, **arguments
+    )
+
+    assert planet_only_flux.shape == time_days.shape
+    assert np.isfinite(exomoon_flux).all()
+    assert np.min(exomoon_flux) < np.min(planet_only_flux)
+    assert np.max(np.abs(exomoon_flux - planet_only_flux)) > 1e-4
+
+
+def test_exomoon_transit_model_rejects_nonfinite_parameters() -> None:
+    with pytest.raises(ValueError, match="must be finite"):
+        ephesos.evaluate_exomoon_transit_model(
+            np.linspace(-0.1, 0.1, 11),  # [day]
+            planet_period_days=np.nan,  # [day]
+            planet_radius_ratio=0.1,
+            summed_radius_to_semimajor_axis=0.1,
+            moon_radius_ratio=0.02,
+            moon_separation_planet_radii=5.0,
+            moon_period_days=0.5,  # [day]
+        )
+
+
+def test_planet_with_disk_model_responds_to_optical_depth_and_inclination() -> None:
+    time_days = np.linspace(-0.12, 0.12, 101)  # [day]
+    arguments = {
+        "period_days": 4.0,  # [day]
+        "planet_radius_ratio": 0.09,
+        "summed_radius_to_semimajor_axis": 0.1,
+        "disk_inner_radius_planet_radii": 1.5,
+        "disk_outer_radius_planet_radii": 4.0,
+        "disk_optical_depth": 0.0,
+        "grid_size": 151,
+    }
+
+    transparent_disk_flux = ephesos.evaluate_planet_with_disk_model(
+        time_days,
+        disk_inclination_degrees=0.0,
+        **arguments,
+    )
+    transparent_inclined_flux = ephesos.evaluate_planet_with_disk_model(
+        time_days,
+        disk_inclination_degrees=70.0,
+        **arguments,
+    )
+    opaque_face_on_flux = ephesos.evaluate_planet_with_disk_model(
+        time_days,
+        disk_inclination_degrees=0.0,
+        disk_optical_depth=2.0,
+        **{key: value for key, value in arguments.items() if key != "disk_optical_depth"},
+    )
+    opaque_inclined_flux = ephesos.evaluate_planet_with_disk_model(
+        time_days,
+        disk_inclination_degrees=70.0,
+        disk_optical_depth=2.0,
+        **{key: value for key, value in arguments.items() if key != "disk_optical_depth"},
+    )
+
+    np.testing.assert_allclose(transparent_disk_flux, transparent_inclined_flux, atol=1e-12)
+    assert np.min(opaque_face_on_flux) < np.min(transparent_disk_flux)
+    assert np.max(np.abs(opaque_inclined_flux - opaque_face_on_flux)) > 1e-4
+
+
 def test_emitting_companion_model_contains_secondary_eclipse() -> None:
     time_days = np.linspace(-0.5, 0.5, 401)  # [day]
     common_arguments = {
