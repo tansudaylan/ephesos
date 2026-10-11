@@ -12,7 +12,7 @@ from PIL import Image
 import ephesos
 
 
-LOGO_PATH = Path(__file__).with_name("AstroMusers.png")
+LOGO_PATH = Path(__file__).resolve().parents[3] / "docs" / "data" / "logos" / "AstroMusers" / "AstroMusers.png"
 TIME_HOURS = np.linspace(-6.0, 6.0, 241)  # [hour]
 PERIOD_DAYS = 4.0  # [day]
 CIRCLE_RADIUS_RATIO = 0.22
