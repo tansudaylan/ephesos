@@ -99,19 +99,29 @@ def test_self_lensing_example_writes_brightening_figure(tmp_path):
     )
 
     all_fluxes = (*system_fluxes.values(), *effect_fluxes.values())
-    assert len(system_fluxes) == len(effect_fluxes) == 3
+    assert len(system_fluxes) == 4
+    assert len(effect_fluxes) == 3
     assert all(relative_flux.shape == time_hours.shape for relative_flux in all_fluxes)
     assert all(np.isfinite(relative_flux).all() for relative_flux in all_fluxes)
-    assert all(
-        np.argmax(relative_flux) == relative_flux.size // 2
-        for relative_flux in all_fluxes
-    )
+    assert all(np.argmax(relative_flux) == relative_flux.size // 2 for relative_flux in all_fluxes)
     system_peaks = [np.max(relative_flux) for relative_flux in system_fluxes.values()]
-    assert np.all(np.diff(system_peaks) > 0.0)
+    assert np.all(np.diff(system_peaks[1:]) > 0.0)
+    assert 0.01 < 1e6 * (system_peaks[0] - 1.0) < 0.1
     effect_peaks = [np.max(relative_flux) for relative_flux in effect_fluxes.values()]
     assert effect_peaks[0] > effect_peaks[1]
     assert effect_peaks[0] > effect_peaks[2]
-    assert 500.0 < 1e6 * (system_peaks[0] - 1.0) < 1_000.0
+    assert 500.0 < 1e6 * (system_peaks[1] - 1.0) < 1_000.0
+    assert output_path.is_file() and output_path.stat().st_size > 10_000
+    with Image.open(output_path) as image:
+        assert image.n_frames == 1
+        assert image.height > image.width
+
+
+def test_orbital_geometry_example_writes_multiview_figure(tmp_path):
+    example = load_example("orbital_geometry")
+
+    output_path = example.run_example(tmp_path / "orbital_geometry.png")
+
     assert output_path.is_file() and output_path.stat().st_size > 10_000
     with Image.open(output_path) as image:
         assert image.n_frames == 1

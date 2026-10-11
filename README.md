@@ -78,17 +78,28 @@ of features derived from the synthesized light curves.
 python examples/minimal_transit/minimal_transit.py
 python examples/PlanetsWithDisks/PlanetsWithDisks.py
 python examples/exomoon/exomoon.py
+python examples/exomoon/exomoon_transit_times.py
 python examples/arbitrary_occultor/arbitrary_occultor.py
 python examples/astromusers_logo_occultor/astromusers_logo_occultor.py
 python examples/compact_multiplanet/compact_multiplanet.py
 python examples/emitting_companion/emitting_companion.py
 python examples/known_self_lensers/known_self_lensers.py
+python examples/eclipse_mapping/eclipse_mapping.py
+python examples/orbital_geometry/orbital_geometry.py
 python examples/run_WhiteDwarf/run_WhiteDwarf.py
 python examples/run_WASP43/run_WASP43.py
 python examples/run_population/run_population.py
 python examples/self_lensing/self_lensing.py
 python examples/transits_simultaneous/transits_simultaneous.py
 ```
+
+The orbital-geometry example shows a deterministic three-planet system from the
+top down before and after each Z-X-Z Euler rotation. Additional panels use
+orthographic projections at arbitrary azimuth and elevation angles or perspective
+views from finite observer positions. The example places one observer inside the
+innermost orbit.
+
+![Orbital geometry after successive Euler rotations and from finite observers](examples/orbital_geometry/orbital_geometry.png)
 
 ## Notebook examples
 
@@ -130,7 +141,25 @@ count.
 
 ![Toy leading- and trailing-moon transits](examples/exomoon/visuals/exomoon_transits.png)
 
+The exomoon timing pipeline advances the moon's orbital phase across 128
+successive four-day planetary transits. It writes one CSV row per host transit
+and a three-panel figure showing observable moon-transit offsets, their empirical
+distribution, and the relation between moon phase and timing offset. The model
+assumes circular coplanar motion and rejects configurations in which the moon's
+projected orbital speed exceeds the planet's transit speed.
+
+![Exomoon transit-time distribution relative to host-planet transits](examples/exomoon/visuals/exomoon_transit_times.png)
+
 ![Secondary eclipses from emitting planetary companions](examples/emitting_companion/visuals/emitting_companion.png)
+
+`evaluate_eclipse_mapping_model()` forward-models a supplied projected 2D
+companion-brightness map through transit and secondary eclipse. Map values are
+relative to the star's disk-averaged surface brightness, and the projected map
+is held fixed during the modeled orbit. This deterministic example compares an
+off-center hotspot with a uniform map of the same mean brightness, showing the
+map-dependent ingress and egress signal.
+
+![Eclipse mapping of a toy planetary hotspot](examples/eclipse_mapping/visuals/eclipse_mapping.png)
 
 ![WASP-43 b transit-model animation](examples/run_WASP43/run_WASP43.gif)
 
@@ -158,12 +187,13 @@ its light curve with the logo's central circular component on the same orbit.
 
 ![AstroMusers logo transit compared with its circular core](examples/astromusers_logo_occultor/astromusers_logo_occultor.gif)
 
-The self-lensing example compares deterministic 30-day binaries containing
-$0.6\,M_\odot$ white-dwarf, $1.4\,M_\odot$ neutron-star, and $8\,M_\odot$
-black-hole companions orbiting a solar analog. A controlled white-dwarf
-comparison isolates the effects of quadratic limb darkening and projected
-impact parameter. These are explicit toy systems rather than fits to observed
-data.
+The self-lensing example compares deterministic 30-day binaries containing a
+Jupiter-mass planet and $0.6\,M_\odot$ white-dwarf, $1.4\,M_\odot$
+neutron-star, and $8\,M_\odot$ black-hole companions orbiting a solar analog.
+The planet's roughly 0.04-ppm pulse has its own expanded-scale panel. A
+controlled white-dwarf comparison isolates the effects of quadratic limb
+darkening and projected impact parameter. These are explicit toy systems
+rather than fits to observed data.
 
 ![Toy self-lensing systems and finite-source effects](examples/self_lensing/self_lensing.png)
 

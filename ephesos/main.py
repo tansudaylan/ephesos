@@ -29,6 +29,7 @@ import chalcedon
 import tdpy
 from tdpy import summgene
 
+from .geometry import orbital_euler_rotation_stages
 from .visualization import save_frame_animation
 
 
@@ -196,8 +197,8 @@ def retr_pathrootanimfram(gdat, namevarbanim):
     pathrootanimfram = gdat.pathvisu + '%s%s' % (namevarbanim, gdat.strgextn)
     
     return pathrootanimfram
-   
-   
+
+
 def retr_pathanimfram(gdat, namevarbanim, t, typevisu, j):
     
     pathrootanimfram = retr_pathrootanimfram(gdat, namevarbanim)
@@ -212,7 +213,7 @@ def retr_pathanimfram(gdat, namevarbanim, t, typevisu, j):
         path = '%s_%s%s_Frame%04d.%s' % (pathrootanimfram, gdat.typecoor, strgextn, t, gdat.typefileplot)
     
     return path
-   
+
 
 def make_diag(gdat, t, typemrkr='none'):
 
@@ -237,7 +238,6 @@ def make_diag(gdat, t, typemrkr='none'):
                 
             #lc = mpl.collections.LineCollection(segments=gdat.listsegm, lw=1, array=gdat.listalphline[j], color=gdat.listcolrcomp[j])#cmap=myred, lw=3)
             #line = axis.add_collection(lc)
-
 
 
 def make_imag(gdat, t, typecolr='real', j=None):
@@ -416,7 +416,7 @@ def make_imag(gdat, t, typecolr='real', j=None):
     
     gdat.indxframthis += 1
 
-    
+
 def calc_brgtprimgridcomp(gdat, j, t):
     
     ## determine the pixels over which the stellar brightness will be calculated
@@ -577,11 +577,21 @@ def retr_diststarcompfromphas_efes(gdat, j, t, phas):
     # find the position in the observer's frame (x, y, z) by performing three Euler rotations about Z, X, and Z axis on the position in the original frame (x_0, y_0, 0)
     # where the three rotations correspond to the the three orbital elements: argument of periapse (arpacomp), inclination (inclcomp), and longitude of the ascending node (loancomp)
     # pi / 2 terms shift the definition of anomtrue by 90 degrees to bring true anomy == 0 (and phase == 0) to inferior conjunction
-    xpos = dist * (np.cos(gdat.loancomp[j]) * np.cos(gdat.arpacomp[j] + anomtrue + np.pi / 2) - \
-                   np.sin(gdat.loancomp[j]) * np.sin(gdat.arpacomp[j] + anomtrue + np.pi / 2) * np.cos(np.pi / 180. * gdat.inclcomp[j]))
-    ypos = dist * (np.sin(gdat.loancomp[j]) * np.cos(gdat.arpacomp[j] + anomtrue + np.pi / 2) + \
-                   np.cos(gdat.loancomp[j]) * np.sin(gdat.arpacomp[j] + anomtrue + np.pi / 2) * np.cos(np.pi / 180. * gdat.inclcomp[j]))
-    zpos = dist * np.sin(gdat.arpacomp[j] + anomtrue + np.pi / 2) * np.sin(np.pi / 180. * gdat.inclcomp[j])
+    anomaly_in_orbital_plane = anomtrue + np.pi / 2
+    position_before_rotations = np.array(
+        (
+            dist * np.cos(anomaly_in_orbital_plane),
+            dist * np.sin(anomaly_in_orbital_plane),
+            0.0,
+        )
+    )
+    position_stages = orbital_euler_rotation_stages(
+        position_before_rotations,
+        gdat.arpacomp[j],
+        np.deg2rad(gdat.inclcomp[j]),
+        gdat.loancomp[j],
+    )
+    xpos, ypos, zpos = position_stages[-1]
     
     if gdat.booldiag:
         if not np.isfinite(xpos) or not np.isfinite(ypos) or not np.isfinite(zpos):
@@ -621,7 +631,7 @@ def retr_diststarcompfromphas_efes(gdat, j, t, phas):
             raise Exception('Transformed coordinates are not finite')
     
     return xpos, ypos, zpos, anommean, anomecce, anomtrue
-    
+
 
 def retr_boolevalfluxconj(gdat, j):
     '''
@@ -662,7 +672,7 @@ def retr_boolevalfluxconj(gdat, j):
     
     return boolevalflux
 
-    
+
 def proc_modl(gdat, typeeval, j, t):
     '''
     Compute the system brightness either in the star or companion grid
@@ -3076,7 +3086,7 @@ def plot_tser_dictefes( \
                                              typeplotback=typeplotback, \
                                              #typesigncode='ephesos', \
                                             )
-                
+
 
 def retr_strgtitl(dictefesinpt, listnamevarbcomp, dictlabl):
     '''
@@ -3142,5 +3152,3 @@ def retr_strgtitl(dictefesinpt, listnamevarbcomp, dictlabl):
         #cntr += 1
 
     return strgtitl
-
-

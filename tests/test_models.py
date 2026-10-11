@@ -92,6 +92,56 @@ def test_exomoon_transit_model_rejects_nonfinite_parameters() -> None:
         )
 
 
+def test_exomoon_transit_time_offsets_follow_moon_phase_drift() -> None:
+    transit_count = 64
+    planet_period_days = 4.0  # [day]
+    moon_period_days = 0.47  # [day]
+    initial_moon_phase_radians = 0.4  # [rad]
+    predictions = ephesos.evaluate_exomoon_transit_time_offsets(
+        transit_count=transit_count,
+        planet_period_days=planet_period_days,
+        planet_radius_ratio=0.09,
+        summed_radius_to_semimajor_axis=0.1,
+        moon_radius_ratio=0.025,
+        moon_separation_planet_radii=5.0,
+        moon_period_days=moon_period_days,
+        transit_epoch_days=2.0,  # [day]
+        initial_moon_phase_radians=initial_moon_phase_radians,
+        cosine_inclination=0.015,
+    )
+
+    observable = predictions["observable"]
+    relative_time_hours = predictions["relative_time_hours"]
+    expected_moon_phase = np.mod(
+        initial_moon_phase_radians
+        + 2.0 * np.pi * np.arange(transit_count) * planet_period_days / moon_period_days,
+        2.0 * np.pi,
+    )  # [rad]
+    np.testing.assert_allclose(predictions["transit_number"], np.arange(transit_count))
+    np.testing.assert_allclose(predictions["moon_phase_radians"], expected_moon_phase)
+    assert 0 < np.count_nonzero(observable) < transit_count
+    assert np.min(relative_time_hours[observable]) < 0.0
+    assert np.max(relative_time_hours[observable]) > 0.0
+    np.testing.assert_allclose(
+        predictions["moon_transit_times_days"][observable]
+        - predictions["planet_transit_times_days"][observable],
+        relative_time_hours[observable] / 24.0,
+    )
+
+
+def test_exomoon_transit_time_offsets_reject_moon_faster_than_planet() -> None:
+    with pytest.raises(ValueError, match="moon orbital speed"):
+        ephesos.evaluate_exomoon_transit_time_offsets(
+            transit_count=8,
+            planet_period_days=4.0,  # [day]
+            planet_radius_ratio=0.09,
+            summed_radius_to_semimajor_axis=0.1,
+            moon_radius_ratio=0.025,
+            moon_separation_planet_radii=5.0,
+            moon_period_days=0.01,  # [day]
+        )
+
+
 def test_planet_with_disk_model_responds_to_optical_depth_and_inclination() -> None:
     time_days = np.linspace(-0.12, 0.12, 101)  # [day]
     arguments = {
@@ -166,6 +216,64 @@ def test_emitting_companion_model_rejects_negative_brightness() -> None:
             radius_ratio=0.1,
             summed_radius_to_semimajor_axis=0.2,
             companion_brightness_ratio=-0.01,
+        )
+
+
+def test_eclipse_mapping_model_matches_uniform_emission_limit() -> None:
+    time_days = np.linspace(0.25, 0.75, 401)  # [day]
+    brightness_ratio = 0.01
+    common_arguments = {
+        "period_days": 1.0,  # [day]
+        "radius_ratio": 0.1,
+        "summed_radius_to_semimajor_axis": 0.2,
+    }
+
+    mapped_flux = ephesos.evaluate_eclipse_mapping_model(
+        time_days,
+        companion_brightness_map=np.full((101, 101), brightness_ratio),
+        **common_arguments,
+    )
+    isotropic_flux = ephesos.evaluate_emitting_companion_model(
+        time_days,
+        companion_brightness_ratio=brightness_ratio,
+        **common_arguments,
+    )
+
+    np.testing.assert_allclose(mapped_flux[[0, -1]], 1.0 + 0.1**2 * brightness_ratio)
+    assert mapped_flux[time_days.size // 2] == pytest.approx(1.0, abs=1e-10)
+    np.testing.assert_allclose(mapped_flux, isotropic_flux, atol=3e-5)
+
+
+def test_eclipse_mapping_model_resolves_a_longitudinal_hotspot() -> None:
+    time_days = np.linspace(0.47, 0.53, 161)  # [day]
+    coordinates = np.linspace(-1.0, 1.0, 101)
+    map_x, map_y = np.meshgrid(coordinates, coordinates)
+    brightness_map = 0.002 + 0.03 * np.exp(
+        -0.5 * (((map_x - 0.35) / 0.2) ** 2 + ((map_y + 0.1) / 0.3) ** 2)
+    )
+    brightness_map[map_x**2 + map_y**2 > 1.0] = 0.0
+
+    relative_flux = ephesos.evaluate_eclipse_mapping_model(
+        time_days,
+        period_days=1.0,
+        radius_ratio=0.1,
+        summed_radius_to_semimajor_axis=0.2,
+        companion_brightness_map=brightness_map,
+    )
+
+    assert np.isfinite(relative_flux).all()
+    assert relative_flux.shape == time_days.shape
+    assert np.max(np.abs(relative_flux - relative_flux[::-1])) > 1e-5
+
+
+def test_eclipse_mapping_model_rejects_invalid_maps() -> None:
+    with pytest.raises(ValueError, match="square raster"):
+        ephesos.evaluate_eclipse_mapping_model(
+            np.linspace(0.47, 0.53, 11),  # [day]
+            period_days=1.0,  # [day]
+            radius_ratio=0.1,
+            summed_radius_to_semimajor_axis=0.2,
+            companion_brightness_map=np.ones((11, 13)),
         )
 
 

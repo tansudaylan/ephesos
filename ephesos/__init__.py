@@ -6,6 +6,7 @@ from .models import (
     derive_transit_features,
     evaluate_compact_object_signatures,
     evaluate_emitting_companion_model,
+    evaluate_eclipse_mapping_model,
     evaluate_exocomet_transit_model,
     evaluate_exomoon_transit_model,
     evaluate_linear_transit_times,
@@ -18,12 +19,15 @@ from .models import (
     evaluate_transit_model,
     mutual_hill_separations,
 )
+from .exomoon_timing import evaluate_exomoon_transit_time_offsets
 from .paths import get_data_path, get_repository_path, get_visuals_path
 from .visualization import (
+    OrbitingBody,
     save_corner_figure,
     save_frame_animation,
     save_light_curve_animation,
     save_light_curve_figure,
+    save_orbital_geometry_figure,
 )
 
 __all__ = [name for name in globals() if not name.startswith("_")]

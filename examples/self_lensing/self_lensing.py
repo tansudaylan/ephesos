@@ -23,7 +23,9 @@ SOURCE_RADIUS_SOLAR = 1.0  # [solar radius]
 SOURCE_MASS_SOLAR = 1.0  # [solar mass]
 LENS_MASS_SOLAR = 0.6  # [solar mass]
 IMPACT_PARAMETER = 0.2
+PLANET_LENS_MASS_SOLAR = 9.55e-4  # [solar mass]
 SYSTEM_LENS_MASSES = {
+    r"Jupiter-mass planet ($1\,M_\mathrm{Jup}$)": PLANET_LENS_MASS_SOLAR,
     r"White dwarf ($0.6\,M_\odot$)": 0.6,
     r"Neutron star ($1.4\,M_\odot$)": 1.4,
     r"Black hole ($8\,M_\odot$)": 8.0,
@@ -78,9 +80,12 @@ def run_example(
     time_hours, system_fluxes, effect_fluxes = evaluate_systems()
     output_path = Path(output_path).with_suffix(f".{typefileplot}")
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    figure, axes = plt.subplots(2, 1, figsize=(7.2, 6.5), sharex=True)
+    figure, axes = plt.subplots(3, 1, figsize=(7.2, 8.5), sharex=True)
     colors = ("#16697A", "#C73E1D", "#2D7D46")
-    for color, (label, relative_flux) in zip(colors, system_fluxes.items()):
+    planet_label, planet_flux = next(iter(system_fluxes.items()))
+    for color, (label, relative_flux) in zip(
+        colors, tuple(system_fluxes.items())[1:]
+    ):
         axes[0].plot(
             time_hours,
             1e6 * (relative_flux - 1.0),
@@ -88,8 +93,18 @@ def run_example(
             linewidth=2.0,
             label=label,
         )
+    planet_excess_ppm = 1e6 * (planet_flux - 1.0)
+    axes[1].plot(
+        time_hours,
+        planet_excess_ppm,
+        color="#B06A00",
+        linewidth=2.0,
+        label=planet_label,
+    )
+    planet_peak_ppm = float(np.max(planet_excess_ppm))
+    axes[1].set_ylim(-0.05 * planet_peak_ppm, 1.1 * planet_peak_ppm)
     for color, (label, relative_flux) in zip(colors, effect_fluxes.items()):
-        axes[1].plot(
+        axes[2].plot(
             time_hours,
             1e6 * (relative_flux - 1.0),
             color=color,
@@ -99,9 +114,11 @@ def run_example(
 
     axes[0].set_title("Compact-object mass controls self-lensing amplitude")
     axes[0].set_ylabel("Flux excess [ppm]")
-    axes[1].set_title(r"Source brightness and alignment reshape a $0.6\,M_\odot$ pulse")
-    axes[1].set_xlabel("Time from conjunction [hour]")
+    axes[1].set_title("A Jupiter-mass planet produces a sub-ppm lensing pulse")
     axes[1].set_ylabel("Flux excess [ppm]")
+    axes[2].set_title(r"Source brightness and alignment reshape a $0.6\,M_\odot$ pulse")
+    axes[2].set_xlabel("Time from conjunction [hour]")
+    axes[2].set_ylabel("Flux excess [ppm]")
     for axis in axes:
         axis.grid(False)
         axis.legend(loc="upper right", fancybox=True, framealpha=1.0, fontsize=11.0)

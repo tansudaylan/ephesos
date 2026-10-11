@@ -286,6 +286,93 @@ def evaluate_emitting_companion_model(
     return result["rflx"][:, 0]
 
 
+def evaluate_eclipse_mapping_model(
+    time_days: np.ndarray,
+    *,
+    period_days: float,
+    radius_ratio: float,
+    summed_radius_to_semimajor_axis: float,
+    companion_brightness_map: np.ndarray,
+    transit_epoch_days: float = 0.0,
+    cosine_inclination: float = 0.0,
+    limb_darkening_coefficients: np.ndarray | None = None,
+) -> np.ndarray:
+    """Evaluate a transit and secondary eclipse for a projected companion map.
+
+    The square brightness map spans -1 to 1 in companion-radius units along
+    both sky-plane axes. Pixels outside the unit disk are ignored, and map
+    values are relative to the star's disk-averaged surface brightness. The
+    projected map remains fixed during the orbit.
+    """
+
+    time_days = _validate_time_days(time_days)
+    parameters = np.asarray(
+        (
+            period_days,
+            radius_ratio,
+            summed_radius_to_semimajor_axis,
+            transit_epoch_days,
+            cosine_inclination,
+        ),
+        dtype=float,
+    )
+    if not np.isfinite(parameters).all():
+        raise ValueError("eclipse-mapping parameters must be finite")
+    if period_days <= 0.0:
+        raise ValueError("period_days must be positive")
+    if radius_ratio <= 0.0:
+        raise ValueError("radius_ratio must be positive")
+    if summed_radius_to_semimajor_axis <= 0.0:
+        raise ValueError("summed_radius_to_semimajor_axis must be positive")
+    if not -1.0 <= cosine_inclination <= 1.0:
+        raise ValueError("cosine_inclination must be between -1 and 1")
+
+    companion_brightness_map = np.asarray(companion_brightness_map, dtype=float)
+    if (
+        companion_brightness_map.ndim != 2
+        or companion_brightness_map.shape[0] != companion_brightness_map.shape[1]
+        or companion_brightness_map.shape[0] < 11
+    ):
+        raise ValueError("companion_brightness_map must be a square raster of at least 11 by 11")
+    if not np.isfinite(companion_brightness_map).all() or np.any(companion_brightness_map < 0.0):
+        raise ValueError("companion_brightness_map must contain finite nonnegative values")
+
+    map_coordinates = np.linspace(-1.0, 1.0, companion_brightness_map.shape[0])
+    map_x, map_y = np.meshgrid(map_coordinates, map_coordinates)
+    companion_disk = map_x**2 + map_y**2 <= 1.0
+    disk_pixel_count = np.count_nonzero(companion_disk)
+    brightness_sum = np.sum(companion_brightness_map[companion_disk])
+    companion_flux = np.full(
+        time_days.size,
+        radius_ratio**2 * brightness_sum / disk_pixel_count,
+    )
+
+    orbital_phase = 2.0 * np.pi * (time_days - transit_epoch_days) / period_days
+    semimajor_axis_stellar_radii = (1.0 + radius_ratio) / summed_radius_to_semimajor_axis
+    companion_x = semimajor_axis_stellar_radii * np.sin(orbital_phase)
+    companion_y = semimajor_axis_stellar_radii * cosine_inclination * np.cos(orbital_phase)
+    companion_z = (
+        semimajor_axis_stellar_radii * np.sqrt(1.0 - cosine_inclination**2) * np.cos(orbital_phase)
+    )
+
+    for time_index in np.flatnonzero(companion_z < 0.0):
+        projected_x = companion_x[time_index] + radius_ratio * map_x
+        projected_y = companion_y[time_index] + radius_ratio * map_y
+        companion_occulted = companion_disk & (projected_x**2 + projected_y**2 <= 1.0)
+        visible_brightness = np.sum(companion_brightness_map[companion_disk & ~companion_occulted])
+        companion_flux[time_index] = radius_ratio**2 * visible_brightness / disk_pixel_count
+
+    stellar_flux = evaluate_transit_model(
+        time_days - transit_epoch_days,
+        period_days=period_days,
+        radius_ratio=radius_ratio,
+        summed_radius_to_semimajor_axis=summed_radius_to_semimajor_axis,
+        cosine_inclination=cosine_inclination,
+        limb_darkening_coefficients=limb_darkening_coefficients,
+    )
+    return stellar_flux + companion_flux
+
+
 def evaluate_multiplanet_transit_model(
     time_days: np.ndarray,
     *,

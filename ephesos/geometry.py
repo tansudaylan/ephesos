@@ -5,6 +5,69 @@ from typing import Literal
 import numpy as np
 
 
+def orbital_euler_rotation_stages(
+    position: np.ndarray,
+    argument_of_periapsis_rad: float,
+    inclination_rad: float,
+    longitude_of_ascending_node_rad: float,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Return an orbital position before and after the successive Z-X-Z rotations."""
+
+    position = np.asarray(position, dtype=float)
+    angles = np.asarray(
+        (argument_of_periapsis_rad, inclination_rad, longitude_of_ascending_node_rad),
+        dtype=float,
+    )
+    if position.ndim < 1 or position.shape[-1] != 3 or not np.isfinite(position).all():
+        raise ValueError("position must contain finite three-dimensional coordinates")
+    if not np.isfinite(angles).all():
+        raise ValueError("Euler rotation angles must be finite")
+
+    stages = [position.copy()]
+    x_coordinate, y_coordinate, z_coordinate = np.moveaxis(stages[-1], -1, 0)
+    cosine = np.cos(argument_of_periapsis_rad)
+    sine = np.sin(argument_of_periapsis_rad)
+    stages.append(
+        np.stack(
+            (
+                cosine * x_coordinate - sine * y_coordinate,
+                sine * x_coordinate + cosine * y_coordinate,
+                z_coordinate,
+            ),
+            axis=-1,
+        )
+    )
+
+    x_coordinate, y_coordinate, z_coordinate = np.moveaxis(stages[-1], -1, 0)
+    cosine = np.cos(inclination_rad)
+    sine = np.sin(inclination_rad)
+    stages.append(
+        np.stack(
+            (
+                x_coordinate,
+                cosine * y_coordinate - sine * z_coordinate,
+                sine * y_coordinate + cosine * z_coordinate,
+            ),
+            axis=-1,
+        )
+    )
+
+    x_coordinate, y_coordinate, z_coordinate = np.moveaxis(stages[-1], -1, 0)
+    cosine = np.cos(longitude_of_ascending_node_rad)
+    sine = np.sin(longitude_of_ascending_node_rad)
+    stages.append(
+        np.stack(
+            (
+                cosine * x_coordinate - sine * y_coordinate,
+                sine * x_coordinate + cosine * y_coordinate,
+                z_coordinate,
+            ),
+            axis=-1,
+        )
+    )
+    return tuple(stages)
+
+
 OccultorType = Literal[
     "disk",
     "oblate",

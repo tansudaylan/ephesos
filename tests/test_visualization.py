@@ -7,11 +7,14 @@ from PIL import Image
 
 import ephesos
 from ephesos.visualization import (
+    OrbitingBody,
     _animation_frame_repetitions,
     _estimate_transit_duration,
     _select_animation_frame_indices,
     _trailing_window_limits,
+    save_orbital_geometry_figure,
 )
+from ephesos.geometry import orbital_euler_rotation_stages
 
 
 def sample_light_curve() -> tuple[np.ndarray, np.ndarray]:
@@ -20,6 +23,51 @@ def sample_light_curve() -> tuple[np.ndarray, np.ndarray]:
     time_hours = np.linspace(-2.0, 2.0, 21)  # [hour]
     relative_flux = 1.0 - 0.01 * np.exp(-0.5 * time_hours**2)
     return time_hours, relative_flux
+
+
+def test_orbital_euler_rotation_stages_follow_z_x_z_order() -> None:
+    stages = orbital_euler_rotation_stages(
+        np.array((0.0, 1.0, 0.0)),
+        np.pi / 2.0,
+        np.pi / 2.0,
+        np.pi / 2.0,
+    )
+
+    assert len(stages) == 4
+    np.testing.assert_allclose(stages[0], (0.0, 1.0, 0.0), atol=1e-12)
+    np.testing.assert_allclose(stages[1], (-1.0, 0.0, 0.0), atol=1e-12)
+    np.testing.assert_allclose(stages[2], (-1.0, 0.0, 0.0), atol=1e-12)
+    np.testing.assert_allclose(stages[3], (0.0, -1.0, 0.0), atol=1e-12)
+
+
+def test_save_orbital_geometry_figure_includes_finite_observer_view(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    orbiting_bodies = (
+        OrbitingBody("Planet b", 18.0, 0.12, 25.0, 38.0, 15.0, 65.0),
+        OrbitingBody("Planet c", 34.0, 0.08, 130.0, 62.0, 95.0, 210.0),
+    )
+    output_path = save_orbital_geometry_figure(
+        orbiting_bodies,
+        tmp_path / "orbital_geometry.png",
+        viewing_angles_deg=((35.0, 25.0), (125.0, 35.0)),
+        observer_positions=((7.0, -4.0, 3.0),),
+        field_of_view_deg=130.0,
+    )
+
+    assert output_path.is_file() and output_path.stat().st_size > 10_000
+    assert f"Writing to {output_path}..." in capsys.readouterr().out
+    with Image.open(output_path) as image:
+        assert image.width > image.height
+        assert image.width > 2_000
+
+    with pytest.raises(ValueError, match="outside the star"):
+        save_orbital_geometry_figure(
+            orbiting_bodies,
+            tmp_path / "invalid.png",
+            observer_positions=((0.0, 0.0, 0.0),),
+        )
 
 
 def test_animation_sampling_concentrates_frames_on_ingress_and_egress() -> None:

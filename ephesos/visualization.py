@@ -2,6 +2,8 @@
 
 from tdpy.verbosity import print
 
+from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
@@ -11,17 +13,373 @@ matplotlib.use("agg")
 
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter
+from matplotlib.lines import Line2D
+from matplotlib.patches import Circle
 import corner
 import numpy as np
 from PIL import Image
 from tdpy.exoplanet import quadratic_limb_darkened_stellar_grid
 
-from .geometry import OccultorType, projected_occultor_mask
+from .geometry import (
+    OccultorType,
+    orbital_euler_rotation_stages,
+    projected_occultor_mask,
+)
 
 
 PlotBackground = Literal["white", "dark"]
 PlotFileType = Literal["png", "pdf"]
 LightCurveAnimationMode = Literal["reveal", "trailing"]
+
+
+@dataclass(frozen=True)
+class OrbitingBody:
+    """Orbital elements and drawing radius for one orbiting body."""
+
+    label: str
+    semimajor_axis: float
+    eccentricity: float
+    argument_of_periapsis_deg: float
+    inclination_deg: float
+    longitude_of_ascending_node_deg: float
+    true_anomaly_deg: float
+
+
+def _orbital_position_stages(
+    body: OrbitingBody,
+    true_anomaly_rad: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    radius = (
+        body.semimajor_axis
+        * (1.0 - body.eccentricity**2)
+        / (1.0 + body.eccentricity * np.cos(true_anomaly_rad))
+    )
+    ephesos_anomaly = true_anomaly_rad + np.pi / 2.0
+    position = np.stack(
+        (
+            radius * np.cos(ephesos_anomaly),
+            radius * np.sin(ephesos_anomaly),
+            np.zeros_like(radius),
+        ),
+        axis=-1,
+    )
+    return orbital_euler_rotation_stages(
+        position,
+        np.deg2rad(body.argument_of_periapsis_deg),
+        np.deg2rad(body.inclination_deg),
+        np.deg2rad(body.longitude_of_ascending_node_deg),
+    )
+
+
+def _project_from_observer(
+    positions: np.ndarray,
+    observer_position: np.ndarray,
+    focal_length: float,
+    near_distance: float,
+) -> np.ndarray:
+    forward = -observer_position / np.linalg.norm(observer_position)
+    reference_up = np.array((0.0, 0.0, 1.0))
+    right = np.cross(forward, reference_up)
+    if np.linalg.norm(right) < 1e-10:
+        right = np.cross(forward, np.array((0.0, 1.0, 0.0)))
+    right /= np.linalg.norm(right)
+    up = np.cross(right, forward)
+
+    relative_position = positions - observer_position
+    depth = relative_position @ forward
+    projected = np.full((*positions.shape[:-1], 2), np.nan)
+    visible = depth > near_distance
+    projected[..., 0][visible] = (
+        focal_length * (relative_position @ right)[visible] / depth[visible]
+    )
+    projected[..., 1][visible] = focal_length * (relative_position @ up)[visible] / depth[visible]
+    return projected
+
+
+def _project_from_direction(positions: np.ndarray, viewing_direction: np.ndarray) -> np.ndarray:
+    forward = -viewing_direction / np.linalg.norm(viewing_direction)
+    reference_up = np.array((0.0, 0.0, 1.0))
+    right = np.cross(forward, reference_up)
+    if np.linalg.norm(right) < 1e-10:
+        right = np.cross(forward, np.array((0.0, 1.0, 0.0)))
+    right /= np.linalg.norm(right)
+    up = np.cross(right, forward)
+    return np.stack((positions @ right, positions @ up), axis=-1)
+
+
+def save_orbital_geometry_figure(
+    orbiting_bodies: Sequence[OrbitingBody],
+    output_path: Path | str,
+    *,
+    star_radius: float = 1.0,
+    length_unit: str = "stellar radii",
+    viewing_angles_deg: Sequence[tuple[float, float]] = ((35.0, 25.0),),
+    observer_positions: Sequence[tuple[float, float, float]] = (),
+    field_of_view_deg: float = 95.0,
+    orbit_samples: int = 361,
+    typefileplot: PlotFileType = "png",
+    font_size: float = 10.0,  # [point]
+) -> Path:
+    """Plot Z-X-Z orbital rotation stages and perspective views of a system.
+
+    Distances and observer positions use ``length_unit``. Euler angles and
+    viewing angles are in degrees. Angle-based views are orthographic. Finite
+    observers look toward the star in perspective and must lie outside it.
+    Orbital positions use Ephesos's 90-degree phase offset before the
+    periapsis, inclination, and ascending-node rotations.
+    """
+
+    orbiting_bodies = tuple(orbiting_bodies)
+    if not orbiting_bodies:
+        raise ValueError("orbiting_bodies must contain at least one body")
+    if not all(isinstance(body, OrbitingBody) for body in orbiting_bodies):
+        raise ValueError("orbiting_bodies must contain OrbitingBody instances")
+    labels = [body.label for body in orbiting_bodies]
+    if any(not label for label in labels) or len(set(labels)) != len(labels):
+        raise ValueError("body labels must be nonempty and unique")
+    body_parameters = np.asarray(
+        [
+            (
+                body.semimajor_axis,
+                body.eccentricity,
+                body.argument_of_periapsis_deg,
+                body.inclination_deg,
+                body.longitude_of_ascending_node_deg,
+                body.true_anomaly_deg,
+            )
+            for body in orbiting_bodies
+        ],
+        dtype=float,
+    )
+    if not np.isfinite(body_parameters).all():
+        raise ValueError("orbital elements and body radii must be finite")
+    if any(body.semimajor_axis <= 0.0 for body in orbiting_bodies):
+        raise ValueError("semimajor axes must be positive")
+    if any(not 0.0 <= body.eccentricity < 1.0 for body in orbiting_bodies):
+        raise ValueError("eccentricities must be between zero and one")
+    if not np.isfinite(star_radius) or star_radius <= 0.0:
+        raise ValueError("star_radius must be finite and positive")
+    if not length_unit:
+        raise ValueError("length_unit must be nonempty")
+    if typefileplot not in ("png", "pdf"):
+        raise ValueError("typefileplot must be 'png' or 'pdf'")
+    if not np.isfinite(field_of_view_deg) or not 1.0 <= field_of_view_deg < 179.0:
+        raise ValueError("field_of_view_deg must be between 1 and 179 degrees")
+    if not isinstance(orbit_samples, (int, np.integer)) or orbit_samples < 64:
+        raise ValueError("orbit_samples must be an integer of at least 64")
+
+    viewing_angles = np.asarray(viewing_angles_deg, dtype=float)
+    if viewing_angles.size == 0:
+        viewing_angles = np.empty((0, 2))
+    if (
+        viewing_angles.ndim != 2
+        or viewing_angles.shape[1] != 2
+        or not np.isfinite(viewing_angles).all()
+        or np.any(np.abs(viewing_angles[:, 1]) > 90.0)
+    ):
+        raise ValueError("viewing_angles_deg must contain finite (azimuth, elevation) pairs")
+
+    observers = np.asarray(observer_positions, dtype=float)
+    if observers.size == 0:
+        observers = np.empty((0, 3))
+    if observers.ndim != 2 or observers.shape[1] != 3 or not np.isfinite(observers).all():
+        raise ValueError("observer_positions must contain finite three-dimensional positions")
+    if np.any(np.linalg.norm(observers, axis=1) <= star_radius):
+        raise ValueError("finite observers must lie outside the star")
+
+    anomalies = np.linspace(0.0, 2.0 * np.pi, orbit_samples)
+    current_anomalies = np.deg2rad([body.true_anomaly_deg for body in orbiting_bodies])
+    orbit_stages = [_orbital_position_stages(body, anomalies) for body in orbiting_bodies]
+    body_stages = [
+        _orbital_position_stages(body, np.array((anomaly,)))
+        for body, anomaly in zip(orbiting_bodies, current_anomalies)
+    ]
+    maximum_orbit_radius = max(
+        body.semimajor_axis * (1.0 + body.eccentricity) for body in orbiting_bodies
+    )
+    map_radius = (
+        max(
+            maximum_orbit_radius,
+            float(np.max(np.linalg.norm(observers[:, :2], axis=1))) if observers.size else 0.0,
+            star_radius,
+        )
+        * 1.08
+    )
+    focal_length = 1.0 / np.tan(np.deg2rad(field_of_view_deg) / 2.0)
+    near_distance = max(1e-8, 1e-5 * maximum_orbit_radius)
+
+    angle_views = []
+    for azimuth_deg, elevation_deg in viewing_angles:
+        azimuth_rad, elevation_rad = np.deg2rad((azimuth_deg, elevation_deg))
+        direction = np.array(
+            (
+                np.cos(elevation_rad) * np.cos(azimuth_rad),
+                np.cos(elevation_rad) * np.sin(azimuth_rad),
+                np.sin(elevation_rad),
+            )
+        )
+        angle_views.append(
+            (
+                f"View az={azimuth_deg:g} deg, el={elevation_deg:g} deg",
+                direction,
+            )
+        )
+    finite_views = [
+        (
+            "Observer at ("
+            + ", ".join(f"{coordinate:g}" for coordinate in observer)
+            + f") {length_unit}",
+            observer,
+        )
+        for observer in observers
+    ]
+
+    panel_count = 4 + len(angle_views) + len(finite_views)
+    column_count = min(4, panel_count)
+    row_count = int(np.ceil(panel_count / column_count))
+    figure, axes = plt.subplots(
+        row_count,
+        column_count,
+        figsize=(3.5 * column_count, 3.25 * row_count),
+        squeeze=False,
+        facecolor="white",
+    )
+    flat_axes = axes.ravel()
+    colors = [plt.get_cmap("tab10")(index % 10) for index in range(len(orbiting_bodies))]
+    stage_titles = (
+        "Orbital plane before rotations",
+        "After Rz(omega)",
+        "After Rx(inclination)",
+        "After Rz(ascending node)",
+    )
+
+    for stage_index, axis in enumerate(flat_axes[:4]):
+        for body_index, (body, color) in enumerate(zip(orbiting_bodies, colors)):
+            orbit = orbit_stages[body_index][stage_index]
+            position = body_stages[body_index][stage_index][0]
+            axis.plot(orbit[:, 0], orbit[:, 1], color=color, linewidth=1.6)
+            axis.scatter(position[0], position[1], color=[color], s=28, zorder=4)
+        axis.add_patch(
+            Circle(
+                (0.0, 0.0),
+                star_radius,
+                facecolor="#E69F00",
+                edgecolor="black",
+                linewidth=0.8,
+                zorder=5,
+            )
+        )
+        if stage_index == 3:
+            axis.scatter(
+                observers[:, 0],
+                observers[:, 1],
+                marker="x",
+                color="black",
+                s=42,
+                zorder=6,
+            )
+        axis.set_title(stage_titles[stage_index], fontsize=font_size)
+        axis.set_xlabel(f"X [{length_unit}]", fontsize=font_size)
+        axis.set_ylabel(f"Y [{length_unit}]", fontsize=font_size)
+        axis.set_xlim(-map_radius, map_radius)
+        axis.set_ylim(-map_radius, map_radius)
+        axis.set_aspect("equal", adjustable="box")
+        axis.axhline(0.0, color="0.82", linewidth=0.6, zorder=0)
+        axis.axvline(0.0, color="0.82", linewidth=0.6, zorder=0)
+        axis.grid(False)
+        axis.tick_params(labelsize=font_size)
+
+    for view_index, (view_title, direction) in enumerate(angle_views, start=4):
+        axis = flat_axes[view_index]
+        for body_index, (body, color) in enumerate(zip(orbiting_bodies, colors)):
+            orbit = _project_from_direction(orbit_stages[body_index][3], direction)
+            position = _project_from_direction(body_stages[body_index][3], direction)[0]
+            axis.plot(orbit[:, 0], orbit[:, 1], color=color, linewidth=1.6)
+            if np.isfinite(position).all():
+                axis.scatter(position[0], position[1], color=[color], s=28, zorder=4)
+        axis.scatter(0.0, 0.0, color="#E69F00", edgecolor="black", s=90, zorder=5)
+        axis.set_title(view_title, fontsize=font_size)
+        axis.set_xlabel(f"Projected X [{length_unit}]", fontsize=font_size)
+        axis.set_ylabel(f"Projected Y [{length_unit}]", fontsize=font_size)
+        axis.set_xlim(-map_radius, map_radius)
+        axis.set_ylim(-map_radius, map_radius)
+        axis.set_aspect("equal", adjustable="box")
+        axis.grid(False)
+        axis.tick_params(labelsize=font_size)
+
+    finite_view_start = 4 + len(angle_views)
+    for view_index, (view_title, observer) in enumerate(finite_views, start=finite_view_start):
+        axis = flat_axes[view_index]
+        for body_index, (body, color) in enumerate(zip(orbiting_bodies, colors)):
+            orbit = _project_from_observer(
+                orbit_stages[body_index][3], observer, focal_length, near_distance
+            )
+            position = _project_from_observer(
+                body_stages[body_index][3], observer, focal_length, near_distance
+            )[0]
+            axis.plot(orbit[:, 0], orbit[:, 1], color=color, linewidth=1.6)
+            if np.isfinite(position).all():
+                axis.scatter(position[0], position[1], color=[color], s=28, zorder=4)
+        star_position = _project_from_observer(
+            np.array(((0.0, 0.0, 0.0),)), observer, focal_length, near_distance
+        )[0]
+        if np.isfinite(star_position).all():
+            axis.scatter(
+                star_position[0],
+                star_position[1],
+                color="#E69F00",
+                edgecolor="black",
+                s=90,
+                zorder=5,
+            )
+        axis.set_title(view_title, fontsize=font_size)
+        axis.set_xlabel("Image-plane x", fontsize=font_size)
+        axis.set_ylabel("Image-plane y", fontsize=font_size)
+        axis.set_xlim(-1.0, 1.0)
+        axis.set_ylim(-1.0, 1.0)
+        axis.set_aspect("equal", adjustable="box")
+        axis.grid(False)
+        axis.tick_params(labelsize=font_size)
+
+    for axis in flat_axes[panel_count:]:
+        axis.set_axis_off()
+
+    legend_handles = [
+        Line2D(
+            [],
+            [],
+            marker="o",
+            color="none",
+            markerfacecolor="#E69F00",
+            markeredgecolor="black",
+            markersize=8,
+            label="Star",
+        )
+    ]
+    legend_handles.extend(
+        Line2D([], [], color=color, marker="o", label=body.label)
+        for body, color in zip(orbiting_bodies, colors)
+    )
+    if observers.size:
+        legend_handles.append(
+            Line2D([], [], color="black", marker="x", linestyle="none", label="Finite observer")
+        )
+    figure.legend(
+        handles=legend_handles,
+        loc="lower center",
+        ncol=min(len(legend_handles), 5),
+        fancybox=True,
+        framealpha=1.0,
+        fontsize=font_size,
+    )
+    figure.tight_layout(rect=(0.0, 0.08, 1.0, 1.0))
+
+    output_path = Path(output_path).with_suffix(f".{typefileplot}")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    print(f"Writing to {output_path}...")
+    figure.savefig(output_path, dpi=300 if typefileplot == "png" else None, bbox_inches="tight")
+    plt.close(figure)
+    return output_path
 
 
 def save_corner_figure(
