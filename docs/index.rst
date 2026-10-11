@@ -8,6 +8,13 @@ Ephesos evaluates deterministic forward models for planetary and stellar light
 curves. The package exposes the model geometry, brightness assumptions, and
 relative-flux prediction for inspection and reuse.
 
+.. toctree::
+    :maxdepth: 2
+    :caption: User guide
+
+    getting_started
+    api
+
 Installation
 ------------
 

@@ -1,8 +1,9 @@
 # Ephesos
 
 ## Purpose
-Ephesos is a light-curve forward-modeling framework for planetary and stellar
-systems. It computes relative flux from explicit geometry and brightness models.
+Ephesos turns orbital geometry and a brightness model into a predicted light
+curve. Its forward models cover planetary and stellar systems and make the
+assumptions about geometry and surface brightness explicit.
 
 The core workflow evaluates sky-projected brightness through `ephesos.eval_modl()`.
 The concise `ephesos.evaluate_transit_model()` interface covers deterministic
@@ -34,6 +35,12 @@ The disk model omits scattering, vertical structure, and radial opacity
 variations. The moon calculation scales as the number of time samples times the
 square of the image-grid size; the disk calculation uses a single grid
 convolution followed by interpolation at each time sample.
+
+`evaluate_exocomet_transit_model()` combines an opaque nucleus with a rasterized,
+partially transparent trailing tail whose optical depth decays exponentially
+away from the nucleus. It assumes a circular orbit and is a phenomenological
+occultation model, not a dust-grain dynamics or comet-outgassing calculation.
+Fractional custom-occultor masks are sampled with bilinear interpolation.
 
 ## Installation
 

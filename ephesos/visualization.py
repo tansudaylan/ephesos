@@ -557,11 +557,11 @@ def save_light_curve_animation(
     figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.96))
 
     def update(frame_index: int):
-        occulted = np.zeros_like(stellar_disk)
+        occulted = np.zeros_like(stellar_disk, dtype=float)
         for companion_index in range(period.size):
             distance_x = image_x - projected_x[companion_index, frame_index]
             distance_y = image_y - projected_y[companion_index, frame_index]
-            occulted |= projected_occultor_mask(
+            opacity = projected_occultor_mask(
                 distance_x,
                 distance_y,
                 radius_ratio[companion_index],
@@ -570,7 +570,8 @@ def save_light_curve_animation(
                 custom_mask=custom_occultor_mask,
                 custom_mask_extent=custom_occultor_extent,
             )
-        current_brightness = np.where(occulted, 0.0, stellar_brightness)
+            occulted = 1.0 - (1.0 - occulted) * (1.0 - opacity)
+        current_brightness = (1.0 - occulted) * stellar_brightness
         model_image.set_data(current_brightness)
         stop = frame_index + 1
         if light_curve_mode == "trailing":

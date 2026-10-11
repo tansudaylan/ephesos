@@ -324,6 +324,28 @@ def test_custom_projected_occultor_uses_benchmark_radius_coordinates() -> None:
     assert not np.allclose(logo_flux, logo_flux[::-1])
 
 
+def test_exocomet_model_has_a_finite_asymmetric_transit_with_soft_tail() -> None:
+    time_days = np.linspace(-0.2, 0.2, 121)
+    relative_flux = ephesos.evaluate_exocomet_transit_model(
+        time_days,
+        period_days=4.1845,
+        transit_epoch_days=0.0,
+        nucleus_radius_ratio=0.03,
+        summed_radius_to_semimajor_axis=0.12,
+        tail_length_nucleus_radii=8.0,
+        tail_width_nucleus_radii=0.25,
+        tail_optical_depth=1.2,
+        tail_decay_length_nucleus_radii=3.0,
+        cosine_inclination=0.02,
+        grid_size=201,
+        mask_grid_size=201,
+    )
+
+    assert np.isfinite(relative_flux).all()
+    assert np.min(relative_flux) < 1.0
+    assert not np.allclose(relative_flux, relative_flux[::-1], atol=1e-5)
+
+
 def test_derive_transit_features_recovers_trapezoid_observables() -> None:
     time_days = np.arange(-3.0, 4.0) / 24.0  # [day]
     relative_flux = np.array((1.0, 0.995, 0.99, 0.99, 0.99, 0.995, 1.0))

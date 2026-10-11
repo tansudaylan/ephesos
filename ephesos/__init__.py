@@ -6,6 +6,7 @@ from .models import (
     derive_transit_features,
     evaluate_compact_object_signatures,
     evaluate_emitting_companion_model,
+    evaluate_exocomet_transit_model,
     evaluate_exomoon_transit_model,
     evaluate_linear_transit_times,
     evaluate_multiplanet_transit_model,

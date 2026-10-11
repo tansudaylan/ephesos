@@ -491,6 +491,87 @@ def evaluate_projected_occultor_model(
     return 1.0 - blocked_flux / unocculted_flux
 
 
+def evaluate_exocomet_transit_model(
+    time_days: np.ndarray,
+    *,
+    period_days: float,
+    transit_epoch_days: float,
+    nucleus_radius_ratio: float,
+    summed_radius_to_semimajor_axis: float,
+    tail_length_nucleus_radii: float = 12.0,
+    tail_width_nucleus_radii: float = 0.25,
+    tail_optical_depth: float = 1.0,
+    tail_decay_length_nucleus_radii: float = 5.0,
+    tail_widening_per_nucleus_radius: float = 0.02,
+    cosine_inclination: float = 0.0,
+    limb_darkening_coefficients: tuple[float, float] = (0.4, 0.25),
+    grid_size: int = 301,
+    mask_grid_size: int = 401,
+) -> np.ndarray:
+    """Model a repeating exocomet transit with a partially transparent trailing dust tail."""
+
+    values = np.asarray((
+        period_days,
+        transit_epoch_days,
+        nucleus_radius_ratio,
+        summed_radius_to_semimajor_axis,
+        tail_length_nucleus_radii,
+        tail_width_nucleus_radii,
+        tail_optical_depth,
+        tail_decay_length_nucleus_radii,
+        tail_widening_per_nucleus_radius,
+    ), dtype=float)
+    if not np.isfinite(values).all():
+        raise ValueError("Exocomet model parameters must be finite.")
+    if period_days <= 0.0 or nucleus_radius_ratio <= 0.0 or summed_radius_to_semimajor_axis <= 0.0:
+        raise ValueError("Period, nucleus radius, and summed radius-to-axis ratio must be positive.")
+    if (
+        tail_length_nucleus_radii <= 0.0
+        or tail_width_nucleus_radii <= 0.0
+        or tail_optical_depth < 0.0
+        or tail_decay_length_nucleus_radii <= 0.0
+        or tail_widening_per_nucleus_radius < 0.0
+    ):
+        raise ValueError("Dust-tail length, width, and decay scale must be positive; opacity parameters nonnegative.")
+    if mask_grid_size < 101 or mask_grid_size % 2 == 0:
+        raise ValueError("mask_grid_size must be an odd integer of at least 101.")
+
+    maximum_tail_width = tail_width_nucleus_radii + (
+        tail_widening_per_nucleus_radius * tail_length_nucleus_radii
+    )
+    left_extent = -1.0 - tail_length_nucleus_radii
+    mask_x = np.linspace(left_extent, 1.0, mask_grid_size)
+    mask_y = np.linspace(-maximum_tail_width, maximum_tail_width, mask_grid_size)
+    coordinate_x, coordinate_y = np.meshgrid(mask_x, mask_y)
+    tail_distance = np.maximum(-coordinate_x - 1.0, 0.0)
+    local_width = tail_width_nucleus_radii + tail_widening_per_nucleus_radius * tail_distance
+    optical_depth = tail_optical_depth * np.exp(
+        -tail_distance / tail_decay_length_nucleus_radii
+        -0.5 * (coordinate_y / local_width) ** 2
+    )
+    dust_opacity = np.where(coordinate_x < -1.0, -np.expm1(-optical_depth), 0.0)
+    nucleus_opacity = (coordinate_x**2 + coordinate_y**2 <= 1.0).astype(float)
+    opacity_map = np.maximum(dust_opacity, nucleus_opacity)
+
+    return evaluate_projected_occultor_model(
+        _validate_time_days(time_days) - transit_epoch_days,
+        period_days=period_days,
+        equivalent_radius_ratio=nucleus_radius_ratio,
+        summed_radius_to_semimajor_axis=summed_radius_to_semimajor_axis,
+        occultor_type="custom",
+        cosine_inclination=cosine_inclination,
+        limb_darkening_coefficients=limb_darkening_coefficients,
+        grid_size=grid_size,
+        custom_occultor_mask=opacity_map,
+        custom_occultor_extent=(
+            left_extent,
+            1.0,
+            -maximum_tail_width,
+            maximum_tail_width,
+        ),
+    )
+
+
 def evaluate_planet_with_disk_model(
     time_days: np.ndarray,
     *,

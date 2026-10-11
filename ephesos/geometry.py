@@ -22,11 +22,18 @@ def _sample_custom_occultor_mask(
     custom_mask: np.ndarray,
     custom_mask_extent: tuple[float, float, float, float],
 ) -> np.ndarray:
-    """Sample a raster silhouette whose coordinates use the benchmark radius."""
+    """Sample an opacity raster whose coordinates use the benchmark radius."""
 
-    custom_mask = np.asarray(custom_mask, dtype=bool)
-    if custom_mask.ndim != 2 or min(custom_mask.shape) < 2 or not np.any(custom_mask):
-        raise ValueError("custom_mask must be a nonempty two-dimensional array")
+    custom_mask = np.asarray(custom_mask, dtype=float)
+    if (
+        custom_mask.ndim != 2
+        or min(custom_mask.shape) < 2
+        or not np.isfinite(custom_mask).all()
+        or np.any(custom_mask < 0.0)
+        or np.any(custom_mask > 1.0)
+        or not np.any(custom_mask > 0.0)
+    ):
+        raise ValueError("custom_mask must be a finite 2D opacity array between zero and one")
     if len(custom_mask_extent) != 4 or not np.isfinite(custom_mask_extent).all():
         raise ValueError("custom_mask_extent must contain four finite values")
     left, right, bottom, top = custom_mask_extent
@@ -35,17 +42,29 @@ def _sample_custom_occultor_mask(
 
     normalized_x = horizontal_offset / equivalent_radius_ratio
     normalized_y = vertical_offset / equivalent_radius_ratio
-    column = np.rint((normalized_x - left) * (custom_mask.shape[1] - 1) / (right - left)).astype(int)
-    row = np.rint((normalized_y - bottom) * (custom_mask.shape[0] - 1) / (top - bottom)).astype(int)
+    column = (normalized_x - left) * (custom_mask.shape[1] - 1) / (right - left)
+    row = (normalized_y - bottom) * (custom_mask.shape[0] - 1) / (top - bottom)
     inside = (
-        (column >= 0)
-        & (column < custom_mask.shape[1])
-        & (row >= 0)
-        & (row < custom_mask.shape[0])
+        (column >= 0.0)
+        & (column <= custom_mask.shape[1] - 1)
+        & (row >= 0.0)
+        & (row <= custom_mask.shape[0] - 1)
     )
-    occulted = np.zeros(np.broadcast_shapes(horizontal_offset.shape, vertical_offset.shape), dtype=bool)
-    occulted[inside] = custom_mask[row[inside], column[inside]]
-    return occulted
+    column_lower = np.clip(np.floor(column).astype(int), 0, custom_mask.shape[1] - 1)
+    row_lower = np.clip(np.floor(row).astype(int), 0, custom_mask.shape[0] - 1)
+    column_upper = np.minimum(column_lower + 1, custom_mask.shape[1] - 1)
+    row_upper = np.minimum(row_lower + 1, custom_mask.shape[0] - 1)
+    column_fraction = column - column_lower
+    row_fraction = row - row_lower
+    opacity = (
+        custom_mask[row_lower, column_lower] * (1.0 - column_fraction) * (1.0 - row_fraction)
+        + custom_mask[row_lower, column_upper] * column_fraction * (1.0 - row_fraction)
+        + custom_mask[row_upper, column_lower] * (1.0 - column_fraction) * row_fraction
+        + custom_mask[row_upper, column_upper] * column_fraction * row_fraction
+    )
+    sampled = np.zeros(np.broadcast_shapes(horizontal_offset.shape, vertical_offset.shape), dtype=float)
+    sampled[inside] = opacity[inside]
+    return sampled
 
 
 def _inclined_ring_area_factor() -> float:
