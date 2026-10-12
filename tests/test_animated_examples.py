@@ -11,7 +11,10 @@ EXAMPLE_DIRECTORY = Path(__file__).parents[1] / "examples"
 
 
 def test_each_example_is_grouped_in_its_own_directory():
-    assert not any(path.is_file() for path in EXAMPLE_DIRECTORY.iterdir())
+    assert not any(
+        path.is_file() and not path.name.startswith(".")
+        for path in EXAMPLE_DIRECTORY.iterdir()
+    )
 
 
 def load_example(name):

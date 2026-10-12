@@ -27,7 +27,7 @@ import astroquery.mast
 import nicomedia
 import chalcedon
 import tdpy
-from tdpy import summgene
+from tdpy import fold_tser, retr_lcurmodl_flarsing, summgene
 
 from .geometry import orbital_euler_rotation_stages
 from .visualization import save_frame_animation
@@ -241,11 +241,6 @@ def make_diag(gdat, t, typemrkr='none'):
 
 
 def make_imag(gdat, t, typecolr='real', j=None):
-    
-    # to be deleted?
-    #if gdat.booldiag:
-    #    if j is None and typecoor == 'comp':
-    #        raise Exception('')
 
     for namevarbanim in gdat.listnamevarbfram:
         
@@ -2124,11 +2119,6 @@ def eval_modl( \
                         indxinsd = np.where(temp >= 0)
                         gdat.yposgridsphr[j][indxinsd] = np.sqrt(temp[indxinsd])
                         
-                        # maybe to be deleted
-                        #gdat.latigridcomp[j] = gdat.yposgridcomp[j] / gdat.rratcomp[j]
-                        #gdat.latigridcomp[j] = np.sqrt(1. - gdat.latisinugridcomp[j]**2)
-                        #gdat.zposgridcomp[j] = np.sqrt(gdat.rratcomp[j]*2 - gdat.xposgridcomp[j]**2  - gdat.yposgridcomp[j]**2)
-                        
                         gdat.latigridsphr[j] = -0.5 * np.pi + \
                                                 np.arccos(gdat.zposgridsphr[j] / np.sqrt(gdat.xposgridsphr[j]**2 + gdat.yposgridsphr[j]**2 + gdat.zposgridsphr[j]**2))
                         gdat.longgridsphr[j] = np.arctan2(gdat.yposgridsphr[j], gdat.xposgridsphr[j])
@@ -2939,7 +2929,7 @@ def plot_tser_dictefes( \
     arrytser[:, :, 1] = dictefes['rflx']
     arrypcur = [[] for j in indxcomp]
     for j in indxcomp:
-        arrypcur[j] = miletos.fold_tser(arrytser, dictefes['epocmtracomp'][j], dictefes['pericomp'][j])
+        arrypcur[j] = fold_tser(arrytser, dictefes['epocmtracomp'][j], dictefes['pericomp'][j])
 
     #if dictlistvalubatc[namebatc]['vari'][nameparavari].size > 1:
     #    if not isinstance(dictlistvalubatc[namebatc]['vari'][nameparavari][k], str):

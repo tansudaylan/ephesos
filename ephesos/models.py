@@ -2,12 +2,15 @@
 
 import numpy as np
 import chalcedon
-import nicomedia
 from astropy.constants import G, M_sun, R_sun, c
 from scipy.ndimage import map_coordinates
 from scipy.signal import fftconvolve
 from chalcedon import evaluate_self_lensing_model
-from tdpy.exoplanet import quadratic_limb_darkened_stellar_grid
+from tdpy.exoplanet import (
+    quadratic_limb_darkened_stellar_grid,
+    retr_deptbeam,
+    retr_deptelli,
+)
 
 from .geometry import OccultorType, projected_occultor_mask
 from .main import eval_modl
@@ -48,10 +51,10 @@ def evaluate_compact_object_signatures(
     ) = parameters
     return {
         "beaming": np.asarray(
-            nicomedia.retr_deptbeam(period_days, stellar_mass_solar, companion_mass_solar)
+            retr_deptbeam(period_days, stellar_mass_solar, companion_mass_solar)
         ),
         "ellipsoidal": np.asarray(
-            nicomedia.retr_deptelli(
+            retr_deptelli(
                 period_days, stellar_density_cgs, stellar_mass_solar, companion_mass_solar
             )
         ),
