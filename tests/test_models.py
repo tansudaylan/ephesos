@@ -15,28 +15,67 @@ def test_sinusoidal_ttv_predicts_periodic_timing_residuals() -> None:
     )
 
 
+def test_sinusoidal_transit_times_combine_ephemeris_and_ttv() -> None:
+    transit_epochs = np.array((0.0, 2.0, 4.0, 6.0))
+    predicted_times = ephesos.evaluate_sinusoidal_transit_times(
+        transit_epochs,
+        epoch_time_days=1.0,  # [day]
+        orbital_period_days=3.0,  # [day]
+        ttv_period_epochs=8.0,  # [transit epoch]
+        ttv_amplitude_days=2.0,  # [day]
+        ttv_phase_radians=0.0,  # [rad]
+        ttv_offset_days=1.0,  # [day]
+    )
+    expected_times = ephesos.evaluate_linear_transit_times(
+        transit_epochs, 1.0, 3.0
+    ) + ephesos.evaluate_sinusoidal_ttv(transit_epochs, 1.0, 0.0, 2.0, 8.0)
+
+    np.testing.assert_allclose(predicted_times, expected_times)
+
+
 def test_nbody_ttv_adapter_keeps_planet_order_and_discards_missing_transits(monkeypatch) -> None:
     calls = []
 
     def integrate(planets, stellar_mass, start, step, count):
         calls.append((planets, stellar_mass, start, step, count))
-        return {'positions': ([0, 1, 0, 1, 0], [0, 0, 1, 1, 2],
-                              [1.0, 2.0, -2.0, 4.0, 5.0])}
+        return {"positions": ([0, 1, 0, 1, 0], [0, 0, 1, 1, 2], [1.0, 2.0, -2.0, 4.0, 5.0])}
 
-    monkeypatch.setitem(sys.modules, 'ttvfast', SimpleNamespace(
-        models=SimpleNamespace(Planet=lambda *parameters: parameters),
-        ttvfast=integrate,
-    ))
+    monkeypatch.setitem(
+        sys.modules,
+        "ttvfast",
+        SimpleNamespace(
+            models=SimpleNamespace(Planet=lambda *parameters: parameters),
+            ttvfast=integrate,
+        ),
+    )
     predictions = ephesos.evaluate_nbody_transit_times(
-        [(1.0,), (2.0,)], 0.4, 0.0, 0.03, 700
+        [[1.0, 2.0, 0.0, 90.0, 0.0, 90.0, 0.0], [2.0, 3.0, 0.0, 90.0, 0.0, 90.0, 0.0]],
+        0.4,
+        0.0,
+        0.03,
+        21.0,
     )
 
     np.testing.assert_array_equal(predictions[0][0], [0, 2])
     np.testing.assert_array_equal(predictions[0][1], [1.0, 5.0])  # [day]
     np.testing.assert_array_equal(predictions[1][0], [0, 1])
     np.testing.assert_array_equal(predictions[1][1], [2.0, 4.0])  # [day]
-    assert calls[0][0] == [(1.0,), (2.0,)]
-    assert calls[0][1:] == (0.4, 0.0, 0.03, 700)
+    assert calls[0][0] == [
+        (1.0, 2.0, 0.0, 90.0, 0.0, 90.0, 0.0),
+        (2.0, 3.0, 0.0, 90.0, 0.0, 90.0, 0.0),
+    ]
+    assert calls[0][1:] == (0.4, 0.0, 0.03, 21.0)
+
+
+def test_nbody_timing_rejects_invalid_end_time() -> None:
+    with pytest.raises(ValueError, match="end_time_days"):
+        ephesos.evaluate_nbody_transit_times(
+            [[1.0, 2.0, 0.0, 90.0, 0.0, 90.0, 0.0]],
+            0.4,
+            10.0,  # [day]
+            0.03,  # [day]
+            9.0,  # [day]
+        )
 
 
 def test_evaluate_transit_model_returns_finite_transit() -> None:

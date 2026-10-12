@@ -77,19 +77,88 @@ def evaluate_sinusoidal_ttv(transit_epoch, offset, phase, amplitude, ttv_period)
     )
 
 
-def evaluate_nbody_transit_times(planet_parameters, stellar_mass_solar, start_time_days,
-                                 step_days, step_count):
-    """Predict each planet's transit times using the optional ttvfast integrator."""
+def evaluate_sinusoidal_transit_times(
+    transit_epochs: np.ndarray,
+    *,
+    epoch_time_days: float,
+    orbital_period_days: float,
+    ttv_period_epochs: float,
+    ttv_amplitude_days: float,
+    ttv_phase_radians: float = 0.0,
+    ttv_offset_days: float = 0.0,
+) -> np.ndarray:
+    """Predict transit times from a linear ephemeris plus a sinusoidal TTV."""
+
+    transit_epochs = np.asarray(transit_epochs, dtype=float)
+    parameters = np.asarray(
+        (
+            epoch_time_days,
+            orbital_period_days,
+            ttv_period_epochs,
+            ttv_amplitude_days,
+            ttv_phase_radians,
+            ttv_offset_days,
+        ),
+        dtype=float,
+    )
+    if transit_epochs.ndim != 1 or not np.isfinite(transit_epochs).all():
+        raise ValueError("transit_epochs must be a finite one-dimensional array")
+    if not np.isfinite(parameters).all():
+        raise ValueError("transit-time parameters must be finite")
+    if orbital_period_days <= 0.0 or ttv_period_epochs <= 0.0:
+        raise ValueError("orbital_period_days and ttv_period_epochs must be positive")
+
+    linear_times = evaluate_linear_transit_times(
+        transit_epochs, epoch_time_days, orbital_period_days
+    )  # [day]
+    timing_residuals = evaluate_sinusoidal_ttv(
+        transit_epochs,
+        ttv_offset_days,
+        ttv_phase_radians,
+        ttv_amplitude_days,
+        ttv_period_epochs,
+    )  # [day]
+    return linear_times + timing_residuals
+
+
+def evaluate_nbody_transit_times(
+    planet_parameters,
+    stellar_mass_solar,
+    start_time_days,
+    step_days,
+    end_time_days,
+):
+    """Predict transit times with TTVFast through an absolute end time in days.
+
+    Each planet row contains mass in solar masses, period in days, eccentricity,
+    inclination, longitude of ascending node, argument of periapsis, and mean
+    anomaly. Angular orbital elements use degrees, as required by TTVFast.
+    """
+
+    planet_parameters = np.asarray(planet_parameters, dtype=float)
+    if (
+        planet_parameters.ndim != 2
+        or planet_parameters.shape[1] != 7
+        or planet_parameters.shape[0] == 0
+        or not np.isfinite(planet_parameters).all()
+    ):
+        raise ValueError("planet_parameters must be a finite array with seven columns")
+    if not np.isfinite((stellar_mass_solar, start_time_days, step_days, end_time_days)).all():
+        raise ValueError("N-body timing inputs must be finite")
+    if stellar_mass_solar <= 0.0 or step_days <= 0.0 or end_time_days <= start_time_days:
+        raise ValueError(
+            "stellar mass and step must be positive and end_time_days must follow start_time_days"
+        )
 
     import ttvfast
 
     planets = [ttvfast.models.Planet(*parameters) for parameters in planet_parameters]
     results = ttvfast.ttvfast(
-        planets, stellar_mass_solar, start_time_days, step_days, step_count
+        planets, stellar_mass_solar, start_time_days, step_days, end_time_days
     )
-    planet_indices = np.asarray(results['positions'][0])
-    transit_epochs = np.asarray(results['positions'][1])
-    transit_times = np.asarray(results['positions'][2])
+    planet_indices = np.asarray(results["positions"][0])
+    transit_epochs = np.asarray(results["positions"][1])
+    transit_times = np.asarray(results["positions"][2])
     predictions = []
     for planet_index in range(len(planets)):
         valid = (planet_indices == planet_index) & (transit_times != -2.0)

@@ -9,17 +9,23 @@ The core workflow evaluates sky-projected brightness through `ephesos.eval_modl(
 The concise `ephesos.evaluate_transit_model()` interface covers deterministic
 single-companion transit calculations.
 
-Ephesos also predicts transit times. `evaluate_linear_transit_times(epochs, epoch_time,
-orbital_period)` gives a linear ephemeris; `evaluate_sinusoidal_ttv(epochs, offset,
-phase, amplitude, ttv_period)` gives a timing residual with the same time units as
-its offset and amplitude. `evaluate_nbody_transit_times(planet_parameters,
-stellar_mass_solar, start_time_days, step_days, step_count)` uses `ttvfast` and
-returns each planet's predicted epoch indices and times in days. Each row of
-`planet_parameters` contains mass, period, eccentricity, inclination, longitude
-of ascending node, argument of periapsis, and mean anomaly in `ttvfast`'s units.
-Missing transit events are excluded without renumbering subsequent epochs. The
-sinusoidal residual is descriptive rather than a dynamical interaction model;
-the N-body calculation requires the optional `ttvfast` integrator.
+Animated examples show a planetary transit and two simultaneous transits:
+
+![WASP-43 b crossing its star in the Ephesos transit model](examples/run_WASP43/run_WASP43.gif)
+
+![Two planets crossing their star at the same time](examples/transits_simultaneous/transits_simultaneous.gif)
+
+Ephesos predicts linear, sinusoidal, and N-body transit times.
+`evaluate_sinusoidal_transit_times()` adds a sinusoidal timing variation to a
+linear ephemeris. Its transit epochs and TTV period are in epochs, while all
+times and the TTV amplitude are in days. `evaluate_nbody_transit_times()` uses
+the optional `ttvfast` integrator and returns each planet's predicted epoch
+indices and times in days. Each `planet_parameters` row contains mass [solar
+masses], period [days], eccentricity, inclination [degrees], ascending-node
+longitude [degrees], periapsis argument [degrees], and mean anomaly [degrees].
+Its final argument is the absolute integration end time in days. Missing
+transits are excluded without renumbering later epochs. The sinusoidal model is
+phenomenological and does not calculate gravitational interactions.
 
 ## Light-curve modeling
 Ephesos predicts light curves from explicit orbital geometry, companion
@@ -90,8 +96,15 @@ python examples/run_WhiteDwarf/run_WhiteDwarf.py
 python examples/run_WASP43/run_WASP43.py
 python examples/run_population/run_population.py
 python examples/self_lensing/self_lensing.py
+python examples/photodynamical_ttv/photodynamical_ttv.py
 python examples/transits_simultaneous/transits_simultaneous.py
 ```
+
+The photodynamical TTV example uses TTVFast to integrate a near-3:2 planetary
+pair and plots each planet's predicted transit times minus its fitted linear
+ephemeris. Planet masses use solar masses, periods and integration times use
+days, and orbital angles use degrees. Install the optional ``ttv`` extra to run
+the example.
 
 The orbital-geometry example shows a deterministic three-planet system from the
 top down before and after each Z-X-Z Euler rotation. Additional panels use
@@ -161,8 +174,6 @@ map-dependent ingress and egress signal.
 
 ![Eclipse mapping of a toy planetary hotspot](examples/eclipse_mapping/visuals/eclipse_mapping.png)
 
-![WASP-43 b transit-model animation](examples/run_WASP43/run_WASP43.gif)
-
 Single-system animations are written beside their scripts. The population summary
 is written to `examples/run_population/population_features.png` and shows transit
 depth, total duration, ingress duration, and equivalent width for 2,048 deterministic
@@ -224,8 +235,6 @@ the shape-induced departure from that spherical benchmark in parts per thousand.
 The simultaneous-transit example places two planets in an illustrative 3:2
 resonant pair with a shared mid-transit time. The animation compares their
 combined light curve with each planet's isolated contribution.
-
-![Two simultaneous transits compared with isolated-planet models](examples/transits_simultaneous/transits_simultaneous.gif)
 
 The compact-system example synthesizes an illustrative seven-planet
 TRAPPIST-1-like resonant chain rather than fitting observations. It produces 21

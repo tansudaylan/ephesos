@@ -8,6 +8,16 @@ Ephesos evaluates deterministic forward models for planetary and stellar light
 curves. The package exposes the model geometry, brightness assumptions, and
 relative-flux prediction for inspection and reuse.
 
+Animated examples show a planetary transit and two simultaneous transits:
+
+.. image:: ../examples/run_WASP43/run_WASP43.gif
+    :alt: WASP-43 b crossing its star in the Ephesos transit model
+    :width: 720 px
+
+.. image:: ../examples/transits_simultaneous/transits_simultaneous.gif
+    :alt: Two planets crossing their star at the same time
+    :width: 720 px
+
 .. toctree::
     :maxdepth: 2
     :caption: User guide

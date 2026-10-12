@@ -128,6 +128,30 @@ def test_orbital_geometry_example_writes_multiview_figure(tmp_path):
         assert image.width > image.height
 
 
+def test_photodynamical_ttv_example_plots_ephesos_predictions(tmp_path, monkeypatch):
+    example = load_example("photodynamical_ttv")
+    predictions = [
+        (np.arange(4), np.array((1.0, 11.0, 21.1, 31.0))),
+        (np.arange(3), np.array((2.0, 17.1, 32.0))),
+    ]
+    calls = []
+
+    def predict(planet_parameters, stellar_mass, start_time, step, end_time):
+        calls.append((planet_parameters.copy(), stellar_mass, start_time, step, end_time))
+        return predictions
+
+    monkeypatch.setattr(example.ephesos, "evaluate_nbody_transit_times", predict)
+    residuals, output_path = example.run_example(tmp_path / "photodynamical_ttv.png")
+
+    assert len(residuals) == len(predictions) == 2
+    assert all(np.isfinite(values).all() for _, values in residuals)
+    assert calls[0][0].shape == (2, 7)
+    assert output_path.is_file() and output_path.stat().st_size > 10_000
+    with Image.open(output_path) as image:
+        assert image.n_frames == 1
+        assert image.width > image.height
+
+
 def test_emitting_companion_example_resolves_secondary_eclipse(tmp_path):
     example = load_example("emitting_companion")
 

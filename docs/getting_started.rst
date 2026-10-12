@@ -45,3 +45,10 @@ Install the ``ttv`` extra to use :func:`ephesos.models.evaluate_nbody_transit_ti
 
 That function delegates integration to ``ttvfast``. Linear and sinusoidal
 ephemerides do not require that extra.
+
+The :doc:`api` includes a two-planet example that plots N-body transit-time
+residuals. Run it from the repository root after installing the ``ttv`` extra:
+
+.. code-block:: console
+
+   python examples/photodynamical_ttv/photodynamical_ttv.py

@@ -12,6 +12,7 @@ from .models import (
     evaluate_linear_transit_times,
     evaluate_multiplanet_transit_model,
     evaluate_nbody_transit_times,
+    evaluate_sinusoidal_transit_times,
     evaluate_planet_with_disk_model,
     evaluate_projected_occultor_model,
     evaluate_self_lensing_model,
