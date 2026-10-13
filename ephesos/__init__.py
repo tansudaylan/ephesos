@@ -21,6 +21,7 @@ from .models import (
     mutual_hill_separations,
 )
 from .exomoon_timing import evaluate_exomoon_transit_time_offsets
+from .stellar_activity import evaluate_spot_flare_model, retr_protlati
 from .paths import get_data_path, get_repository_path, get_visuals_path
 from .visualization import (
     OrbitingBody,

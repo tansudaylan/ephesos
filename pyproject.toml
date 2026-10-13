@@ -29,12 +29,12 @@ dependencies = [
   "astropy",
   "astroquery",
   "tqdm",
-  "nicomedia",
   "tdpy",
   "chalcedon"
 ]
 
 [project.optional-dependencies]
+bokeh = ["bokeh>=3.4"]
 plotting = ["miletos"]
 ttv = ["ttvfast"]
 

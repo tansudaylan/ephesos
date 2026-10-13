@@ -19,7 +19,7 @@ import corner
 import numpy as np
 from PIL import Image
 from tdpy.exoplanet import quadratic_limb_darkened_stellar_grid
-from tdpy.plotting import save_figure
+from tdpy.plotting import save_bokeh_html, save_figure
 
 from .geometry import (
     OccultorType,
@@ -29,7 +29,7 @@ from .geometry import (
 
 
 PlotBackground = Literal["white", "dark"]
-PlotFileType = Literal["png", "pdf"]
+PlotFileType = Literal["png", "pdf", "html"]
 LightCurveAnimationMode = Literal["reveal", "trailing"]
 
 
@@ -599,12 +599,54 @@ def save_light_curve_figure(
     """Write a focused, publication-ready light-curve figure."""
 
     time, relative_flux = _validate_light_curve(time, relative_flux)
-    if typefileplot not in ("png", "pdf"):
-        raise ValueError("typefileplot must be 'png' or 'pdf'")
+    if typefileplot not in ("png", "pdf", "html"):
+        raise ValueError("typefileplot must be 'png', 'pdf', or 'html'")
 
     output_path = Path(output_path).with_suffix(f".{typefileplot}")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     colors = _plot_colors(typeplotback)
+    if typefileplot == "html":
+        from bokeh.models import HoverTool
+        from bokeh.plotting import figure as bokeh_figure
+
+        plot = bokeh_figure(
+            title=title,
+            width=720,
+            height=420,
+            sizing_mode="stretch_width",
+            tools="pan,wheel_zoom,box_zoom,reset,save",
+        )
+        plot.line(
+            time,
+            relative_flux,
+            color=colors["model"],
+            line_width=2.3,
+            legend_label=model_label,
+        )
+        plot.line(
+            (time[0], time[-1]),
+            (1.0, 1.0),
+            color=colors["foreground"],
+            line_width=1.0,
+            line_dash="dashed",
+            legend_label="Unocculted flux",
+        )
+        plot.add_tools(
+            HoverTool(tooltips=[("Time", "$x"), ("Relative flux", "$y")])
+        )
+        plot.xaxis.axis_label = time_label
+        plot.yaxis.axis_label = "Relative flux"
+        plot.grid.visible = False
+        plot.background_fill_color = colors["background"]
+        plot.border_fill_color = colors["background"]
+        plot.title.text_color = colors["foreground"]
+        plot.xaxis.axis_label_text_color = colors["foreground"]
+        plot.yaxis.axis_label_text_color = colors["foreground"]
+        plot.legend.location = "bottom_right"
+        plot.legend.background_fill_color = colors["background"]
+        plot.legend.border_line_color = colors["foreground"]
+        return save_bokeh_html(plot, output_path, title=title)
+
     figure, axis = plt.subplots(
         figsize=(7.2, 4.2),
         facecolor=colors["background"],

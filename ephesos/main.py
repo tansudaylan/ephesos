@@ -24,7 +24,7 @@ import astropy.timeseries
 import astroquery
 import astroquery.mast
 
-import nicomedia
+
 import chalcedon
 import tdpy
 from tdpy import fold_tser, retr_lcurmodl_flarsing, summgene
@@ -177,7 +177,7 @@ def retr_lumistartranrofi(gdat, typecoor, indxgridrofi, j=None):
 
         cosg = np.sqrt(1. - dist**2)
         
-        fluxstartran = nicomedia.retr_brgtlmdk(cosg, gdat.coeflmdk, typelmdk=gdat.typelmdk) * areapixl
+        fluxstartran = tdpy.retr_brgtlmdk(cosg, gdat.coeflmdk, typelmdk=gdat.typelmdk) * areapixl
         
         if gdat.booldiag and (abs(fluxstartran) > 1e10).any() or not np.isfinite(fluxstartran).all():
             print('')
@@ -435,7 +435,7 @@ def calc_brgtprimgridcomp(gdat, j, t):
     
     cosg = np.sqrt(1. - gdat.distfromprimgridcomp[j][gdat.indxgridcompprimnocc]**2)
     brgtprim = np.zeros_like(gdat.distfromprimgridcomp[j])
-    brgtprim[gdat.indxgridcompprimnocc] = nicomedia.retr_brgtlmdk(cosg, gdat.coeflmdk, typelmdk=gdat.typelmdk) * gdat.areapixlstar
+    brgtprim[gdat.indxgridcompprimnocc] = tdpy.retr_brgtlmdk(cosg, gdat.coeflmdk, typelmdk=gdat.typelmdk) * gdat.areapixlstar
     
     return brgtprim
 
@@ -903,7 +903,7 @@ def proc_modl(gdat, typeeval, j, t):
                     indxslic = (gdat.numbslic * ((gdat.longgridsphrrota % (2. * np.pi)) / np.pi / 2.)).astype(int)
                     brgtraww *= gdat.brgtsliccomp[indxslic]
             
-            gdat.brgtcomp = nicomedia.retr_brgtlmdk(cosg, gdat.coeflmdk, brgtraww=brgtraww, typelmdk=gdat.typelmdk) * gdat.areapixlcomp
+            gdat.brgtcomp = tdpy.retr_brgtlmdk(cosg, gdat.coeflmdk, brgtraww=brgtraww, typelmdk=gdat.typelmdk) * gdat.areapixlcomp
             
             lumisyst[t] += np.sum(gdat.brgtcomp)
                 
@@ -1588,7 +1588,7 @@ def eval_modl( \
             gdat.coeflmdk=[0.2, 0.2, 0.2]
     elif gdat.typelmdk == 'quadkipp':
         # convert the Kipping basis to quadratic
-        gdat.coeflmdk = nicomedia.retr_coeflmdkfromkipp(gdat.coeflmdk[0], gdat.coeflmdk[1])
+        gdat.coeflmdk = tdpy.kipping_to_quadratic_limb_darkening(gdat.coeflmdk[0], gdat.coeflmdk[1])
     
     if gdat.inclcomp is not None:
         gdat.cosicomp = np.cos(gdat.inclcomp * np.pi / 180.)
@@ -1724,14 +1724,14 @@ def eval_modl( \
         gdat.masstotl = gdat.massstar + np.sum(gdat.masscompsolr) # [M_S]
         
         ## semi-major axis
-        gdat.smaxcompasun = nicomedia.retr_smaxkepl(gdat.pericomp, gdat.masstotl) # [AU]
+        gdat.smaxcompasun = tdpy.retr_smaxkepl(gdat.pericomp, gdat.masstotl) # [AU]
         
         gdat.smaxcomp = gdat.smaxcompasun * gdat.dictfact['aurs'] / gdat.radistar # [R_*]
 
         if gdat.perimoon is not None:
             smaxmoon = [[[] for jj in indxmoon[j]] for j in gdat.indxcomp]
             for j in gdat.indxcomp:
-                smaxmoon[j] = nicomedia.retr_smaxkepl(gdat.perimoon[j], gdat.masscompsolr[j])
+                smaxmoon[j] = tdpy.retr_smaxkepl(gdat.perimoon[j], gdat.masscompsolr[j])
                 
                 for jj in indxmoon[j]:
                     if smaxmoon[j] <= gdat.radicomp[j] / gdat.dictfact['rsre'] / gdat.dictfact['aurs']:
@@ -1792,7 +1792,7 @@ def eval_modl( \
             raise Exception(' gdat.rsmacomp is Non')
     
     # duration of total transit in hours
-    gdat.duratrantotlcomp = nicomedia.retr_duratrantotl(gdat.pericomp, gdat.rsmacomp, gdat.cosicomp, booldiag=gdat.booldiag)
+    gdat.duratrantotlcomp = tdpy.retr_duratrantotl(gdat.pericomp, gdat.rsmacomp, gdat.cosicomp, booldiag=gdat.booldiag)
     gdat.dcyctrantotlcomp = gdat.duratrantotlcomp / gdat.pericomp / 24.
 
     dictefes['duratrantotlcomp'] = gdat.duratrantotlcomp
@@ -1843,7 +1843,7 @@ def eval_modl( \
                 rratcomp = gdat.meanrratcomp
             else:
                 rratcomp = gdat.rratcomp
-            gdat.duratranfullcomp = nicomedia.retr_duratranfull(gdat.pericomp, gdat.rsmacomp, gdat.cosicomp, rratcomp)
+            gdat.duratranfullcomp = tdpy.retr_duratranfull(gdat.pericomp, gdat.rsmacomp, gdat.cosicomp, rratcomp)
             dictefes['duratranfullcomp'] = gdat.duratranfullcomp
             gdat.dcyctranfullcomp = gdat.duratranfullcomp / gdat.pericomp / 24.
             dictefes['dcyctranfullcomp'] = gdat.dcyctranfullcomp
@@ -2236,7 +2236,7 @@ def eval_modl( \
             # stellar brightness in the star grid
             gdat.brgtprimgridprim = np.zeros_like(gdat.xposgridstar)
             cosg = np.sqrt(1. - gdat.distgridstar[gdat.indxgridstarstar]**2)
-            gdat.brgtprimgridprim[gdat.indxgridstarstar] = nicomedia.retr_brgtlmdk(cosg, gdat.coeflmdk, typelmdk=gdat.typelmdk) * gdat.areapixlstar
+            gdat.brgtprimgridprim[gdat.indxgridstarstar] = tdpy.retr_brgtlmdk(cosg, gdat.coeflmdk, typelmdk=gdat.typelmdk) * gdat.areapixlstar
             
             if gdat.typesyst == 'CompactObjectStellarCompanion':
                 
@@ -2258,14 +2258,14 @@ def eval_modl( \
             
                 # maximum stellar brightness for source grid
                 if gdat.pathvisu is not None:
-                    gdat.maxmbrgtsour = nicomedia.retr_brgtlmdk(1., gdat.coeflmdk, typelmdk=gdat.typelmdk) * gdat.areapixlsour
+                    gdat.maxmbrgtsour = tdpy.retr_brgtlmdk(1., gdat.coeflmdk, typelmdk=gdat.typelmdk) * gdat.areapixlsour
             
             # Boolean flag to indicate that flux will be calculated by adding/subtracting brightness occulted by the companion to the unocculted brightness of the star
             gdat.boolcalcdiff = gdat.typecoor == 'comp'
 
             # maximum stellar brightness for planet and star grids
             if gdat.boolmakeanim:
-                gdat.maxmlumistar = nicomedia.retr_brgtlmdk(1., gdat.coeflmdk, typelmdk=gdat.typelmdk) * gdat.areapixlstar
+                gdat.maxmlumistar = tdpy.retr_brgtlmdk(1., gdat.coeflmdk, typelmdk=gdat.typelmdk) * gdat.areapixlstar
             
             # total (unocculted) stellar birghtness
             gdat.lumistarnocc = np.sum(gdat.brgtprimgridprim)
@@ -2582,8 +2582,8 @@ def eval_modl( \
         
         if gdat.masscomp is not None and gdat.massstar is not None and gdat.radistar is not None:
             densstar = 1.4 * gdat.massstar / gdat.radistar**3
-            deptbeam = 1e-3 * nicomedia.retr_deptbeam(gdat.pericomp, gdat.massstar, gdat.masscomp)
-            deptelli = 1e-3 * nicomedia.retr_deptelli(gdat.pericomp, densstar, gdat.massstar, gdat.masscomp)
+            deptbeam = 1e-3 * tdpy.retr_deptbeam(gdat.pericomp, gdat.massstar, gdat.masscomp)
+            deptelli = 1e-3 * tdpy.retr_deptelli(gdat.pericomp, densstar, gdat.massstar, gdat.masscomp)
             dictefes['rflxslen'] = [[] for j in gdat.indxcomp]
             dictefes['rflxbeam'] = [[] for j in gdat.indxcomp]
             dictefes['rflxelli'] = [[] for j in gdat.indxcomp]
@@ -2946,7 +2946,7 @@ def plot_tser_dictefes( \
     
     listcolr = np.array(['g', 'b', 'firebrick', 'orange', 'olive'])
 
-    duratrantotlcomp = nicomedia.retr_duratrantotl(dictefes['pericomp'], dictefes['rsmacomp'], dictefes['cosicomp']) # [hours]
+    duratrantotlcomp = tdpy.retr_duratrantotl(dictefes['pericomp'], dictefes['rsmacomp'], dictefes['cosicomp']) # [hours]
     
     listxdatvert = [-0.5 * dictefes['duratrantotlcomp'], 0.5 * dictefes['duratrantotlcomp']] # [hours]
     if 'duratranfullcomp' in dictefes:

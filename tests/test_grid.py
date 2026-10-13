@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 import tdpy
 import ephesos
-import nicomedia
+
 import miletos
 
 """
@@ -334,7 +334,7 @@ for b in range(len(listtypelang)):
                     durasimu = 6.0 / 24.0  # days
 
                 duratrantotl = (
-                    nicomedia.retr_duratrantotl(
+                    tdpy.retr_duratrantotl(
                         dicttemp["pericomp"], dicttemp["rsmacomp"], dicttemp["cosicomp"]
                     )
                     / 24.0

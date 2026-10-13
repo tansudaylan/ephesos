@@ -48,6 +48,23 @@ away from the nucleus. It assumes a circular orbit and is a phenomenological
 occultation model, not a dust-grain dynamics or comet-outgassing calculation.
 Fractional custom-occultor masks are sampled with bilinear interpolation.
 
+## Stellar activity
+
+Hattusa's forward models now live in `ephesos.stellar_activity`. `retr_protlati(period, shear, latitude_degrees)` preserves its latitude-dependent period law, $P(\theta)=P_{\rm eq}(1+\rho\sin^2\theta)$. Here $\rho$ is the fractional pole-to-equator period difference. It is not the coefficient of the commonly used angular-velocity shear law.
+
+`evaluate_spot_flare_model` natively integrates the visible portions of circular spots over a quadratically limb-darkened stellar disk, applies optional Gaussian spot evolution, and adds TDpy's fast-rise exponential-decay flares. Spots are spherical caps with angular radii equal to the arcsine of their supplied radius ratios. Rotation and inclination determine their visibility, including partial visibility at the limb. Times and evolution scales use days, angles use degrees, and radii, contrast, amplitudes, and flux offset are dimensionless. Longitude zero places an equatorial spot nearest the observer at time zero. The total is an independent sum of spot deficits, which neglects overlapping spots. Flare amplitudes follow the inherited TDpy convention and are maxima on the supplied sampling grid. Pass `return_components=True` to inspect the total, individual spots, evolved spots, and summed flares. `quadrature_order` defaults to 64; increase it to check numerical convergence for your parameters.
+
+```bash
+python examples/differential_rotation/differential_rotation.py --typefileplot png
+python examples/spot_flare/spot_flare.py --typefileplot png
+```
+
+![Simulated differential rotation and spot-phase drift](examples/differential_rotation/differential_rotation.png)
+
+![Explicitly simulated evolving spots and flares](examples/spot_flare/spot_flare.png)
+
+The rotation example assumes a 10-day equatorial period and relative period shear of 0.2. The spot-and-flare example spans 30 days with two evolving spots and two explicitly supplied flares. These are model predictions, not observed stars. Fitting, likelihoods, and target selection belong to Miletos. The original Hattusa MIT notice is retained in `LICENSE.Hattusa`.
+
 ## Installation
 
 ```bash
@@ -57,6 +74,10 @@ export EPHESOS_PATH=/path/to/ephesos
 ```
 
 For N-body transit-time predictions, install `pip install -e '.[ttv]'`.
+
+Spotted-star predictions use the standard Ephesos installation and require no separate spot engine or NumPy downgrade.
+
+For interactive Bokeh light curves, install `python -m pip install -e '.[bokeh]'`.
 
 `EPHESOS_PATH` identifies the repository root. Runtime inputs belong under `data/`.
 Generated pipeline outputs belong under `visuals/`. Git ignores both directories.
@@ -84,6 +105,7 @@ of features derived from the synthesized light curves.
 python examples/minimal_transit/minimal_transit.py
 python examples/PlanetsWithDisks/PlanetsWithDisks.py
 python examples/exomoon/exomoon.py
+python examples/exomoon/exomoon.py --output-path examples/exomoon/visuals/exomoon_transits.html
 python examples/exomoon/exomoon_transit_times.py
 python examples/arbitrary_occultor/arbitrary_occultor.py
 python examples/astromusers_logo_occultor/astromusers_logo_occultor.py

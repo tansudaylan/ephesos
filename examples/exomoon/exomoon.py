@@ -71,9 +71,66 @@ def run_example(
 
     time_hours, relative_flux = evaluate_models()
     output_path = Path(output_path)
-    if output_path.suffix.lower() not in (".png", ".pdf"):
-        raise ValueError("output_path must have a .png or .pdf suffix")
+    if output_path.suffix.lower() not in (".png", ".pdf", ".html"):
+        raise ValueError("output_path must have a .png, .pdf, or .html suffix")
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if output_path.suffix.lower() == ".html":
+        from bokeh.layouts import column
+        from bokeh.models import HoverTool
+        from bokeh.plotting import figure as bokeh_figure
+        from tdpy.plotting import save_bokeh_html
+
+        colors = {
+            "Planet only": "#20252B",
+            "Leading moon": "#16697A",
+            "Trailing moon": "#C73E1D",
+        }
+        shared_tools = "pan,wheel_zoom,box_zoom,reset,save"
+        flux_plot = bokeh_figure(
+            title="Planet and exomoon transit signals",
+            width=720,
+            height=340,
+            sizing_mode="stretch_width",
+            tools=shared_tools,
+        )
+        residual_plot = bokeh_figure(
+            title="Moon signal relative to the planet-only model",
+            width=720,
+            height=280,
+            sizing_mode="stretch_width",
+            x_range=flux_plot.x_range,
+            tools=shared_tools,
+        )
+        planet_only_flux = relative_flux["Planet only"]
+        for label, flux in relative_flux.items():
+            flux_plot.line(
+                time_hours,
+                flux,
+                color=colors[label],
+                line_width=2.2,
+                legend_label=label,
+            )
+            if label != "Planet only":
+                residual_plot.line(
+                    time_hours,
+                    1e3 * (flux - planet_only_flux),
+                    color=colors[label],
+                    line_width=2.2,
+                    legend_label=label,
+                )
+        for plot in (flux_plot, residual_plot):
+            plot.grid.visible = False
+            plot.xaxis.axis_label = "Time from planetary transit [hour]"
+            plot.add_tools(
+                HoverTool(tooltips=[("Time [hour]", "$x"), ("Signal", "$y")])
+            )
+            plot.legend.location = "bottom_right"
+        flux_plot.yaxis.axis_label = "Relative flux"
+        residual_plot.yaxis.axis_label = "Moon signal [ppt]"
+        plot = column(flux_plot, residual_plot, sizing_mode="stretch_width")
+        save_bokeh_html(plot, output_path, title="Exomoon transit models")
+        return time_hours, relative_flux, output_path
 
     figure, (flux_axis, residual_axis) = plt.subplots(
         2,

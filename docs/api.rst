@@ -8,6 +8,12 @@ Forward models
    :members:
    :undoc-members:
 
+Stellar activity
+----------------
+
+.. automodule:: ephesos.stellar_activity
+   :members: retr_protlati, evaluate_spot_flare_model
+
 Geometry
 --------
 

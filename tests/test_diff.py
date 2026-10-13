@@ -6,7 +6,7 @@ import matplotlib as mpl
 mpl.use("agg")
 import matplotlib.pyplot as plt
 
-import nicomedia
+from pergamon import population_synthesis
 import ephesos
 from ephesos.paths import get_data_path
 import pergamon
@@ -59,7 +59,7 @@ listtypesyst = [
 for k in range(len(listtypesyst)):
 
     # get dictionaries for stars, companions, and moons
-    dictnico = nicomedia.retr_dictpoplstarcomp(
+    dictnico = population_synthesis.retr_dictpoplstarcomp(
         "PlanetarySystem",
         typepoplsyst,
         typestar="sunl",

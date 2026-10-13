@@ -34,6 +34,33 @@ geometry and limb-darkening law. It is not a fit to observations. Use
 :func:`ephesos.models.evaluate_transit_model` to evaluate the same class of
 model from Python; :doc:`api` lists the other supported model families.
 
+Stellar activity
+----------------
+
+The forward models transferred from Hattusa now live in
+``ephesos.stellar_activity``. The latitude-dependent period law uses
+P(latitude) = P_equator * (1 + shear * sin(latitude)**2), with latitude in
+degrees. This preserves Hattusa's period-shear convention.
+
+Run the native models with the standard installation:
+
+.. code-block:: console
+
+   python examples/differential_rotation/differential_rotation.py --typefileplot png
+   python examples/spot_flare/spot_flare.py --typefileplot png
+
+``evaluate_spot_flare_model`` accepts explicit spot and flare arrays, times in
+days, and angles in degrees. The native calculation integrates visible
+spherical-cap spots on the quadratically limb-darkened disk, including partial
+visibility at the limb. The supplied radius ratio is the sine of the cap's
+angular radius. Longitude zero places an equatorial spot nearest the observer
+at time zero. Gaussian spot evolution is optional. Independent spot deficits
+are added without accounting for spot overlap. Increase ``quadrature_order``
+from its default of 64 to test convergence. Flare amplitudes are maxima on the
+supplied time grid. No optional spot engine is required.
+Miletos provides parameter parsing, likelihoods, and fitting; Ephesos does not
+infer parameters. The examples are synthetic model predictions.
+
 Optional N-body timings
 -----------------------
 

@@ -123,12 +123,14 @@ def test_animation_slowdown_prioritizes_transit_states() -> None:
     assert np.array_equal(repetitions, (1, 4, 6))
 
 
-@pytest.mark.parametrize("typefileplot", ("png", "pdf"))
+@pytest.mark.parametrize("typefileplot", ("png", "pdf", "html"))
 def test_save_light_curve_figure_supports_required_formats(
     tmp_path: Path,
     capsys,
     typefileplot: str,
 ) -> None:
+    if typefileplot == "html":
+        pytest.importorskip("bokeh")
     time_hours, relative_flux = sample_light_curve()
     output_path = tmp_path / "light_curve"
 
@@ -144,6 +146,8 @@ def test_save_light_curve_figure_supports_required_formats(
     assert result == output_path.with_suffix(f".{typefileplot}")
     assert result.is_file()
     assert result.stat().st_size > 1_000
+    if typefileplot == "html":
+        assert "Bokeh" in result.read_text(encoding="utf-8")
     assert f"Writing to {result}..." in capsys.readouterr().out
 
 

@@ -10,11 +10,13 @@ from PIL import Image
 EXAMPLE_DIRECTORY = Path(__file__).parents[1] / "examples"
 
 
-def test_each_example_is_grouped_in_its_own_directory():
-    assert not any(
-        path.is_file() and not path.name.startswith(".")
+def test_only_supported_standalone_examples_are_at_root():
+    standalone_examples = {
+        path.name
         for path in EXAMPLE_DIRECTORY.iterdir()
-    )
+        if path.is_file() and not path.name.startswith(".")
+    }
+    assert standalone_examples <= {"differential_rotation.py", "spot_flare.py"}
 
 
 def load_example(name):
@@ -35,6 +37,22 @@ def load_notebook(name):
         if cell["cell_type"] == "code"
     )
     return path, notebook, code
+
+
+def test_exomoon_example_writes_interactive_bokeh_plot(tmp_path):
+    pytest.importorskip("bokeh")
+    output_path = tmp_path / "exomoon.html"
+
+    time_hours, relative_flux, result_path = load_example("exomoon").run_example(
+        output_path
+    )
+
+    assert result_path == output_path
+    assert time_hours.ndim == 1
+    assert len(relative_flux) == 3
+    html = output_path.read_text(encoding="utf-8")
+    assert "Bokeh" in html
+    assert "Planet and exomoon transit signals" in html
 
 
 @pytest.mark.parametrize(
