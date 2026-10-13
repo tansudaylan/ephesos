@@ -19,6 +19,7 @@ import corner
 import numpy as np
 from PIL import Image
 from tdpy.exoplanet import quadratic_limb_darkened_stellar_grid
+from tdpy.plotting import save_figure
 
 from .geometry import (
     OccultorType,
@@ -373,13 +374,14 @@ def save_orbital_geometry_figure(
         fontsize=font_size,
     )
     figure.tight_layout(rect=(0.0, 0.08, 1.0, 1.0))
-
-    output_path = Path(output_path).with_suffix(f".{typefileplot}")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    print(f"Writing to {output_path}...")
-    figure.savefig(output_path, dpi=300 if typefileplot == "png" else None, bbox_inches="tight")
-    plt.close(figure)
-    return output_path
+    return Path(
+        save_figure(
+            figure,
+            output_path,
+            typefileplot=typefileplot,
+            close_figure=True,
+        )
+    )
 
 
 def save_corner_figure(
@@ -424,11 +426,14 @@ def save_corner_figure(
         axis.tick_params(labelsize=font_size)
     figure.set_facecolor("white")
     figure.tight_layout(rect=(0.0, 0.0, 1.0, 0.98))
-
-    print(f"Writing to {output_path}...")
-    figure.savefig(output_path, dpi=300 if typefileplot == "png" else None, bbox_inches="tight")
-    plt.close(figure)
-    return output_path
+    return Path(
+        save_figure(
+            figure,
+            output_path,
+            typefileplot=typefileplot,
+            close_figure=True,
+        )
+    )
 
 
 def _validate_light_curve(

@@ -54,12 +54,18 @@ def _normalize_alpha_series(values):
     if arr.size == 0:
         return arr.copy()
 
-    amin = np.amin(arr)
-    amax = np.amax(arr)
-    if np.isclose(amax, amin):
+    valid = np.isfinite(arr)
+    if not np.any(valid):
         return np.zeros_like(arr, dtype=float)
 
-    return (arr - amin) / (amax - amin)
+    amin = np.amin(arr[valid])
+    amax = np.amax(arr[valid])
+    if np.isclose(amax, amin) or amax <= amin:
+        return np.zeros_like(arr, dtype=float)
+
+    out = np.zeros_like(arr, dtype=float)
+    out[valid] = (arr[valid] - amin) / (amax - amin)
+    return out
 
 
 def retr_boolgridouts(gdat, j, typecoor, typeoccu='comp'):

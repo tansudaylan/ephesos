@@ -50,46 +50,6 @@ for b in range(len(listtypelang)):
 
     listcolr = ["g", "b", "firebrick", "orange", "olive"]
 
-    # to be deleted
-    # def retr_strgtitl(dictefesinpt, dictefes, listnamevarbcomp, dictlabl):
-    # def retr_strgtitl(dictefesinpt):
-    #
-    #    strgtitl = ''
-    #    if 'radistar' in dictefesinpt:
-    #        strgtitl += '$R_*$ = %.1f $R_\odot$' % dictefesinpt['radistar']
-    #    if typesyst == 'cosc' and 'massstar' in dictefesinpt:
-    #        if len(strgtitl) > 0 and strgtitl[-2:] != ', ':
-    #            strgtitl += ', '
-    #        strgtitl += '$M_*$ = %.1f $M_\odot$' % dictefesinpt['massstar']
-    #
-    #    cntr = 0
-    #    for kk, name in enumerate(listnamevarbcomp):
-    #
-    #        if name == 'epocmtracomp' or not name in dictefesinpt:
-    #            continue
-    #
-    #        if name == 'typebrgtcomp':
-    #            continue
-    #
-    #        for j, valu in enumerate(dictefesinpt[name]):
-    #
-    #            if len(strgtitl) > 0 and strgtitl[-2:] != ', ':
-    #                strgtitl += ', '
-    #
-    #            strgtitl += '%s = ' % dictlabl['root'][name]
-    #
-    #            if name == 'typebrgtcomp':
-    #                strgtitl += '%s' % (valu)
-    #            else:
-    #                strgtitl += '%.3g' % (valu)
-    #
-    #            if name in dictlabl['unit'] and dictlabl['unit'][name] != '':
-    #                strgtitl += ' %s' % dictlabl['unit'][name]
-    #
-    #            cntr += 1
-    #
-    #    return strgtitl
-
     dictfact = tdpy.retr_factconv()
 
     dicttdpy = tdpy.retr_dictstrg()
