@@ -1,9 +1,10 @@
 # Ephesos
 
 ## Purpose
-Ephesos turns orbital geometry and a brightness model into a predicted light
-curve. Its forward models cover planetary and stellar systems and make the
-assumptions about geometry and surface brightness explicit.
+I use Ephesos to ask what a specified star and planetary system should look like
+in a light curve. Orbital geometry, companion sizes, and surface brightness all
+leave their mark. I want to see the effect of each assumption before trying to
+infer it from observations.
 
 The core workflow evaluates sky-projected brightness through `ephesos.eval_modl()`.
 The concise `ephesos.evaluate_transit_model()` interface covers deterministic
@@ -28,8 +29,9 @@ transits are excluded without renumbering later epochs. The sinusoidal model is
 phenomenological and does not calculate gravitational interactions.
 
 ## Light-curve modeling
-Ephesos predicts light curves from explicit orbital geometry, companion
-sizes, surface-brightness profiles, and limb-darkening assumptions.
+Choose the geometry and brightness model, then calculate the light curve. The
+examples below show what changes when I add a moon, a disk, a comet-like tail,
+or a nonuniform brightness map. Each model comes with its own approximations.
 
 `evaluate_exomoon_transit_model()` combines a circular, coplanar planet and moon
 on a limb-darkened stellar image grid. It accepts their radii and the moon's
@@ -105,7 +107,7 @@ of features derived from the synthesized light curves.
 python examples/minimal_transit/minimal_transit.py
 python examples/PlanetsWithDisks/PlanetsWithDisks.py
 python examples/exomoon/exomoon.py
-python examples/exomoon/exomoon.py --output-path examples/exomoon/visuals/exomoon_transits.html
+python examples/exomoon/exomoon.py --bokeh
 python examples/exomoon/exomoon_transit_times.py
 python examples/arbitrary_occultor/arbitrary_occultor.py
 python examples/astromusers_logo_occultor/astromusers_logo_occultor.py
@@ -284,13 +286,13 @@ labels, colors, typography, and opaque legend to GIF output. Its default
 curve. That window defaults to three measured transit durations and can be set
 explicitly with `history_duration` in the time-axis units.
 
-## Model diagnostics
-Ephesos diagnostics show:
+## Inspecting the model
+To understand a calculated light curve, I inspect:
 
 - the input system geometry and stellar properties
 - the intermediate brightness model or limb-darkening assumptions
 - the resulting relative flux light curve
-- any residuals or model comparison diagnostics
+- residuals or comparisons with other models, when available
 
-Together these products expose the assumptions that determine the modeled light curve.
+Changing one assumption and comparing the curves is often the quickest way to see which part of the system produces a feature.
 

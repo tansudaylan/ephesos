@@ -1,12 +1,10 @@
 Ephesos
 ========
 
-Purpose
--------
-
-Ephesos evaluates deterministic forward models for planetary and stellar light
-curves. The package exposes the model geometry, brightness assumptions, and
-relative-flux prediction for inspection and reuse.
+I use Ephesos to predict how a specified planetary or stellar system changes
+the light we receive. Set the geometry and brightness assumptions, then inspect
+the resulting relative flux. Ephesos calculates predictions for supplied
+parameters; fitting and posterior sampling belong to downstream analysis.
 
 Animated examples show a planetary transit and two simultaneous transits:
 

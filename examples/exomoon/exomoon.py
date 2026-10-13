@@ -181,8 +181,10 @@ def main() -> int:
         type=Path,
         default=Path(__file__).parent / "visuals" / "exomoon_transits.png",
     )
+    parser.add_argument("--bokeh", action="store_true", help="write an interactive HTML version")
     arguments = parser.parse_args()
-    run_example(arguments.output_path)
+    output_path = arguments.output_path.with_suffix(".html") if arguments.bokeh else arguments.output_path
+    run_example(output_path)
     return 0
 
 
