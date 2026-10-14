@@ -7,6 +7,38 @@ import pytest
 import ephesos
 
 
+@pytest.mark.parametrize("eccentricity", [-0.4, 0.0, 0.4, 0.85])
+def test_orbital_anomalies_use_shared_kepler_solver_and_preserve_distances(monkeypatch, eccentricity):
+    from importlib import import_module
+    from unittest.mock import Mock
+    from tdpy.exoplanet import solve_kepler_equation
+
+    model = import_module("ephesos.main")
+    shared_solver = Mock(wraps=solve_kepler_equation)
+    monkeypatch.setattr(model, "solve_kepler_equation", shared_solver)
+    phase = np.linspace(-0.25, 0.75, 51)
+    semimajor_axis = 2.0  # [AU]
+    mean, eccentric, true, separation = model.retr_anomdist(phase, semimajor_axis, eccentricity)
+    shared_solver.assert_called_once()
+    np.testing.assert_array_equal(mean, 2.0 * np.pi * phase)
+    np.testing.assert_allclose(model.func_anom(mean, eccentric, eccentricity), np.zeros(phase.size), atol=1e-12)
+    np.testing.assert_allclose(model.funcanomderi(eccentric, eccentricity), 1.0 - eccentricity * np.cos(eccentric))
+    np.testing.assert_array_equal(separation, semimajor_axis * (1.0 - eccentricity * np.cos(eccentric)))
+    expected_true = 2.0 * np.arctan2(
+        np.sqrt(1.0 + eccentricity) * np.sin(eccentric / 2.0),
+        np.sqrt(1.0 - eccentricity) * np.cos(eccentric / 2.0),
+    )
+    np.testing.assert_array_equal(true, expected_true)
+
+
+@pytest.mark.parametrize("eccentricity", [-1.0, 1.0, 1.2])
+def test_orbital_anomalies_preserve_bound_orbit_validation(eccentricity):
+    from importlib import import_module
+
+    with pytest.raises(ValueError, match="Eccentricity must satisfy"):
+        import_module("ephesos.main").retr_anomdist(np.array([0.0, 0.2]), 2.0, eccentricity)
+
+
 def test_sinusoidal_ttv_predicts_periodic_timing_residuals() -> None:
     epochs = np.array([0.0, 2.0, 4.0, 6.0])
     np.testing.assert_allclose(

@@ -28,6 +28,7 @@ import astroquery.mast
 import chalcedon
 import tdpy
 from tdpy import fold_tser, retr_lcurmodl_flarsing, summgene
+from tdpy.exoplanet import orbital_phase, solve_kepler_equation
 
 from .geometry import orbital_euler_rotation_stages
 from .visualization import save_frame_animation
@@ -520,16 +521,7 @@ def retr_anomdist(phas, smax, ecce, booldiag=False):
     # Mean anomaly
     anommean = 2. * np.pi * phas
 
-    # Newton iterations solve E - e sin(E) = M.
-    anomecce = anommean + ecce * np.sin(anommean)
-    for _ in range(100):
-        residual = func_anom(anommean, anomecce, ecce)
-        deriv = funcanomderi(anomecce, ecce)
-        anomecce -= residual / deriv
-        if np.all(np.abs(residual) < 1e-12):
-            break
-    else:
-        raise RuntimeError('Kepler solver did not converge.')
+    anomecce = solve_kepler_equation(anommean, ecce)
         
     # distance from the  star
     dist = smax * (1. - ecce * np.cos(anomecce))
@@ -1897,10 +1889,10 @@ def eval_modl( \
             print('j')
             print(j)
         
-        gdat.phascomp[j] = ((gdat.time - gdat.epocmtracomp[j]) / gdat.pericomp[j] + 0.25) % 1. - 0.25
+        gdat.phascomp[j] = orbital_phase(gdat.time, gdat.pericomp[j], gdat.epocmtracomp[j], center=0.25)
         
         if gdat.perimoon is not None:
-            gdat.phasmoon[j] = ((gdat.time - gdat.epocmtramoon[j]) / gdat.perimoon[j] + 0.25) % 1. - 0.25
+            gdat.phasmoon[j] = orbital_phase(gdat.time, gdat.perimoon[j], gdat.epocmtramoon[j], center=0.25)
         
         if gdat.booldiag:
             if np.isscalar(gdat.phascomp[j]):
