@@ -40,6 +40,35 @@ def test_orbital_euler_rotation_stages_follow_z_x_z_order() -> None:
     np.testing.assert_allclose(stages[3], (0.0, -1.0, 0.0), atol=1e-12)
 
 
+@pytest.mark.parametrize("shape", [(3,), (2, 3), (2, 2, 3), (0, 3)])
+def test_orbital_euler_rotation_stages_preserve_batch_shape_and_intermediates(shape):
+    position = np.arange(np.prod(shape), dtype=float).reshape(shape)
+    original = position.copy()
+    angles = (0.31, -0.72, 1.17)  # [rad]
+    cosine = np.cos(angles)
+    sine = np.sin(angles)
+    matrices = (
+        np.array([[cosine[0], -sine[0], 0.0], [sine[0], cosine[0], 0.0], [0.0, 0.0, 1.0]]),
+        np.array([[1.0, 0.0, 0.0], [0.0, cosine[1], -sine[1]], [0.0, sine[1], cosine[1]]]),
+        np.array([[cosine[2], -sine[2], 0.0], [sine[2], cosine[2], 0.0], [0.0, 0.0, 1.0]]),
+    )
+    stages = orbital_euler_rotation_stages(position, *angles)
+    expected = position.copy()
+    np.testing.assert_array_equal(stages[0], original)
+    assert not np.shares_memory(stages[0], position)
+    for stage, matrix in zip(stages[1:], matrices):
+        expected = np.einsum('ij,...j->...i', matrix, expected)
+        assert stage.shape == shape
+        np.testing.assert_allclose(stage, expected, rtol=1e-14, atol=1e-14)
+    np.testing.assert_array_equal(position, original)
+
+
+@pytest.mark.parametrize("position, angle", [([1.0, 2.0], 0.1), ([np.nan, 0.0, 0.0], 0.1), ([1.0, 0.0, 0.0], np.inf)])
+def test_orbital_euler_rotation_stages_retain_invalid_input_rejection(position, angle):
+    with pytest.raises(ValueError, match="finite"):
+        orbital_euler_rotation_stages(position, angle, 0.2, 0.3)
+
+
 def test_save_orbital_geometry_figure_includes_finite_observer_view(
     tmp_path: Path,
     capsys,

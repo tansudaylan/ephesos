@@ -3,6 +3,7 @@
 from typing import Literal
 
 import numpy as np
+from scipy.spatial.transform import Rotation
 
 
 def orbital_euler_rotation_stages(
@@ -24,47 +25,10 @@ def orbital_euler_rotation_stages(
         raise ValueError("Euler rotation angles must be finite")
 
     stages = [position.copy()]
-    x_coordinate, y_coordinate, z_coordinate = np.moveaxis(stages[-1], -1, 0)
-    cosine = np.cos(argument_of_periapsis_rad)
-    sine = np.sin(argument_of_periapsis_rad)
-    stages.append(
-        np.stack(
-            (
-                cosine * x_coordinate - sine * y_coordinate,
-                sine * x_coordinate + cosine * y_coordinate,
-                z_coordinate,
-            ),
-            axis=-1,
-        )
-    )
-
-    x_coordinate, y_coordinate, z_coordinate = np.moveaxis(stages[-1], -1, 0)
-    cosine = np.cos(inclination_rad)
-    sine = np.sin(inclination_rad)
-    stages.append(
-        np.stack(
-            (
-                x_coordinate,
-                cosine * y_coordinate - sine * z_coordinate,
-                sine * y_coordinate + cosine * z_coordinate,
-            ),
-            axis=-1,
-        )
-    )
-
-    x_coordinate, y_coordinate, z_coordinate = np.moveaxis(stages[-1], -1, 0)
-    cosine = np.cos(longitude_of_ascending_node_rad)
-    sine = np.sin(longitude_of_ascending_node_rad)
-    stages.append(
-        np.stack(
-            (
-                cosine * x_coordinate - sine * y_coordinate,
-                sine * x_coordinate + cosine * y_coordinate,
-                z_coordinate,
-            ),
-            axis=-1,
-        )
-    )
+    axes = np.array([[0.0, 0.0, 1.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]])
+    for axis, angle in zip(axes, angles):
+        rotation = Rotation.from_rotvec(axis * angle)
+        stages.append(rotation.apply(stages[-1].reshape(-1, 3)).reshape(position.shape))
     return tuple(stages)
 
 
