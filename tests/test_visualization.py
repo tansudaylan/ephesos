@@ -25,6 +25,26 @@ def sample_light_curve() -> tuple[np.ndarray, np.ndarray]:
     return time_hours, relative_flux
 
 
+def test_model_background_selection_preserves_flux_and_caller_style():
+    import matplotlib.pyplot as plt
+    from tdpy.plotting import plot_style
+
+    time = np.linspace(-0.2, 0.2, 21)  # [day]
+    original_time = time.copy()
+    outputs = []
+    with plot_style('white'):
+        original_settings = dict(plt.rcParams)
+        for typeplotback in ('white', 'dark'):
+            outputs.append(ephesos.eval_modl(
+                time, 'PlanetarySystem', pericomp=np.array([3.2]), epocmtracomp=np.array([0.0]),
+                rsmacomp=np.array([0.085]), cosicomp=np.array([0.0]), rratcomp=np.array([0.085]),
+                typelmdk='quad', booldiag=False, typeverb=0, typeplotback=typeplotback,
+            ))
+            assert dict(plt.rcParams) == original_settings
+    np.testing.assert_array_equal(outputs[0]['rflx'], outputs[1]['rflx'])
+    np.testing.assert_array_equal(time, original_time)
+
+
 def test_orbital_euler_rotation_stages_follow_z_x_z_order() -> None:
     stages = orbital_euler_rotation_stages(
         np.array((0.0, 1.0, 0.0)),

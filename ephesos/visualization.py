@@ -645,7 +645,7 @@ def save_light_curve_figure(
         plot.legend.location = "bottom_right"
         plot.legend.background_fill_color = colors["background"]
         plot.legend.border_line_color = colors["foreground"]
-        return save_bokeh_html(plot, output_path, title=title)
+        return save_bokeh_html(plot, output_path, title=title, typeplotback=typeplotback)
 
     figure, axis = plt.subplots(
         figsize=(7.2, 4.2),

@@ -10,6 +10,11 @@ The core workflow evaluates sky-projected brightness through `ephesos.eval_modl(
 The concise `ephesos.evaluate_transit_model()` interface covers deterministic
 single-companion transit calculations.
 
+`eval_modl()` retains white plot backgrounds with black axes by default.
+Pass `typeplotback='dark'` for a dark theme with white axes. The selection is
+scoped to the call, including its plotting helpers, and restores the caller's
+Matplotlib settings afterward. It does not change the calculated flux.
+
 Animated examples show a planetary transit and two simultaneous transits:
 
 ![WASP-43 b crossing its star in the Ephesos transit model](examples/run_WASP43/run_WASP43.gif)
@@ -41,8 +46,8 @@ angle, and normal optical depth. The moon model holds the planet's stellar orbit
 fixed, omits the planet's reflex motion, and does not enforce orbital stability.
 The disk model omits scattering, vertical structure, and radial opacity
 variations. The moon calculation scales as the number of time samples times the
-square of the image-grid size; the disk calculation uses a single grid
-convolution followed by interpolation at each time sample.
+square of the image-grid size. The disk calculation uses one grid convolution
+followed by interpolation at each time sample.
 
 `evaluate_exocomet_transit_model()` combines an opaque nucleus with a rasterized,
 partially transparent trailing tail whose optical depth decays exponentially
@@ -52,9 +57,9 @@ Fractional custom-occultor masks are sampled with bilinear interpolation.
 
 ## Stellar activity
 
-Hattusa's forward models now live in `ephesos.stellar_activity`. `retr_protlati(period, shear, latitude_degrees)` preserves its latitude-dependent period law, $P(\theta)=P_{\rm eq}(1+\rho\sin^2\theta)$. Here $\rho$ is the fractional pole-to-equator period difference. It is not the coefficient of the commonly used angular-velocity shear law.
+Use `ephesos.stellar_activity` for stellar-rotation, spot, and flare forward models. `retr_protlati(period, shear, latitude_degrees)` follows the latitude-dependent period law, $P(\theta)=P_{\rm eq}(1+\rho\sin^2\theta)$. Here $\rho$ is the fractional pole-to-equator period difference. The angular-velocity shear law uses a different coefficient.
 
-`evaluate_spot_flare_model` natively integrates the visible portions of circular spots over a quadratically limb-darkened stellar disk, applies optional Gaussian spot evolution, and adds TDpy's fast-rise exponential-decay flares. Spots are spherical caps with angular radii equal to the arcsine of their supplied radius ratios. Rotation and inclination determine their visibility, including partial visibility at the limb. Times and evolution scales use days, angles use degrees, and radii, contrast, amplitudes, and flux offset are dimensionless. Longitude zero places an equatorial spot nearest the observer at time zero. The total is an independent sum of spot deficits, which neglects overlapping spots. Flare amplitudes follow the inherited TDpy convention and are maxima on the supplied sampling grid. Pass `return_components=True` to inspect the total, individual spots, evolved spots, and summed flares. `quadrature_order` defaults to 64; increase it to check numerical convergence for your parameters.
+`evaluate_spot_flare_model` natively integrates the visible portions of circular spots over a quadratically limb-darkened stellar disk, applies optional Gaussian spot evolution, and adds TDpy's fast-rise exponential-decay flares. Spots are spherical caps with angular radii equal to the arcsine of their supplied radius ratios. Rotation and inclination determine their visibility, including partial visibility at the limb. Times and evolution scales use days, angles use degrees, and radii, contrast, amplitudes, and flux offset are dimensionless. Longitude zero places an equatorial spot nearest the observer at time zero. The total is an independent sum of spot deficits, which neglects overlapping spots. Flare amplitudes follow the inherited TDpy convention and are maxima on the supplied sampling grid. Pass `return_components=True` to inspect the total, individual spots, evolved spots, and summed flares. `quadrature_order` defaults to 64. Increase it to check numerical convergence for your parameters.
 
 ```bash
 python examples/differential_rotation/differential_rotation.py --typefileplot png

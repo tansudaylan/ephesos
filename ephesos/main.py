@@ -1026,6 +1026,7 @@ def proc_modl(gdat, typeeval, j, t):
             raise Exception('Computation has taken too long.')
 
 
+@tdpy.themed_plot
 def eval_modl( \
               # times in days at which to evaluate the relative flux
               time, \
@@ -1412,12 +1413,7 @@ def eval_modl( \
 
     gdat.boolsystpsys = gdat.typesyst.startswith('PlanetarySystem')
     
-    if gdat.typeplotback in ('black', 'dark'):
-        plt.style.use('dark_background')
-    elif gdat.typeplotback == 'white':
-        plt.style.use('default')
-    else:
-        raise ValueError("typeplotback must be 'white' or 'dark'")
+    plt.rcParams.update(tdpy.plot_style_parameters(gdat.typeplotback))
         
     if gdat.boolcalcdistcomp:
         dictefes['distcomp'] = np.empty((gdat.numbcomp, gdat.numbcomp))
@@ -2852,6 +2848,7 @@ def eval_modl( \
     return dictefes
 
 
+@tdpy.themed_plot
 def plot_tser_dictefes( \
                        pathvisu, \
                        dictefes, strgextninpt, lablunittime, typetarg='', typefileplot='png', \

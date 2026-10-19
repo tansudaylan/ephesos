@@ -4,7 +4,7 @@ Ephesos
 I use Ephesos to predict how a specified planetary or stellar system changes
 the light we receive. Set the geometry and brightness assumptions, then inspect
 the resulting relative flux. Ephesos calculates predictions for supplied
-parameters; fitting and posterior sampling belong to downstream analysis.
+parameters. Downstream packages handle fitting and posterior sampling.
 
 Animated examples show a planetary transit and two simultaneous transits:
 

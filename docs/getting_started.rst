@@ -3,8 +3,8 @@ Getting started
 
 Ephesos evaluates deterministic forward models of transit, occultation,
 self-lensing, planetary emission, and transit-timing signals. Models return
-predicted quantities for supplied parameters; fitting and posterior sampling
-are provided by downstream analysis packages.
+predicted quantities for supplied parameters. Downstream analysis packages
+handle fitting and posterior sampling.
 
 Installation
 ------------
@@ -30,17 +30,17 @@ and a companion-to-star radius ratio of 0.1:
    python examples/minimal_transit/minimal_transit.py --typefileplot png
 
 The resulting curve is a deterministic prediction under the configured orbital
-geometry and limb-darkening law. It is not a fit to observations. Use
+geometry and limb-darkening law. The example uses no observed light curve. Use
 :func:`ephesos.models.evaluate_transit_model` to evaluate the same class of
-model from Python; :doc:`api` lists the other supported model families.
+model from Python. The :doc:`api` page lists the other supported model families.
 
 Stellar activity
 ----------------
 
-The forward models transferred from Hattusa now live in
-``ephesos.stellar_activity``. The latitude-dependent period law uses
+Use ``ephesos.stellar_activity`` for stellar-rotation, spot, and flare forward
+models. The latitude-dependent period law uses
 P(latitude) = P_equator * (1 + shear * sin(latitude)**2), with latitude in
-degrees. This preserves Hattusa's period-shear convention.
+degrees. Here ``shear`` is the fractional pole-to-equator period difference.
 
 Run the native models with the standard installation:
 
@@ -58,8 +58,8 @@ at time zero. Gaussian spot evolution is optional. Independent spot deficits
 are added without accounting for spot overlap. Increase ``quadrature_order``
 from its default of 64 to test convergence. Flare amplitudes are maxima on the
 supplied time grid. No optional spot engine is required.
-Miletos provides parameter parsing, likelihoods, and fitting; Ephesos does not
-infer parameters. The examples are synthetic model predictions.
+Miletos provides parameter parsing, likelihoods, and fitting. Ephesos provides
+the forward models. The examples are synthetic predictions.
 
 Optional N-body timings
 -----------------------
