@@ -54,6 +54,19 @@ python examples/romer_light_time/romer_light_time.py --typefileplot png
 
 ![Synthetic Io immersion and emergence delays versus time and Earth-Jupiter distance, with the fitted light-time relation](examples/romer_light_time/visuals/romer_light_time.png)
 
+The eclipsing-binary example combines Ephesos's luminous-companion model with
+its primary-star transit model. A planet crosses the primary between the
+binary's primary and secondary eclipses. The independent ephemerides keep these
+events separate, so the component flux changes can be added directly. The
+secondary is a uniform-brightness sphere, and the calculation omits binary
+reflex motion and three-body dynamics.
+
+```bash
+python examples/planet_in_eclipsing_binary/planet_in_eclipsing_binary.py --typefileplot png
+```
+
+![Synthetic eclipsing-binary light curve with isolated planetary transits across the primary](examples/planet_in_eclipsing_binary/visuals/planet_in_eclipsing_binary.png)
+
 ## Light-curve modeling
 Choose the geometry and brightness model, then calculate the light curve. The
 examples below show what changes when I add a moon, a disk, a comet-like tail,

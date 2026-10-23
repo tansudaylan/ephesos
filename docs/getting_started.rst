@@ -106,3 +106,22 @@ of light.
 
 .. image:: ../examples/romer_light_time/visuals/romer_light_time.png
    :alt: Synthetic Io eclipse-contact delays versus time and Earth-Jupiter distance with a fitted light-time relation.
+
+Planet transits in an eclipsing binary
+--------------------------------------
+
+The next example combines Ephesos's luminous-companion forward model with its
+primary-star transit model. It treats the secondary as a uniform-brightness
+sphere and places the planet transits between the binary eclipses. Since the
+events do not overlap, their flux changes can be added directly. The model uses
+independent ephemerides and omits binary reflex motion and three-body dynamics.
+
+.. code-block:: console
+
+   python examples/planet_in_eclipsing_binary/planet_in_eclipsing_binary.py --typefileplot png
+
+The upper panel compares the combined light curve with the binary alone. The
+lower panel isolates the primary transits.
+
+.. image:: ../examples/planet_in_eclipsing_binary/visuals/planet_in_eclipsing_binary.png
+   :alt: Synthetic binary eclipses and isolated planetary transits across the primary over the full 30-day baseline.
