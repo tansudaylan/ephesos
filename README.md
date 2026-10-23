@@ -38,6 +38,22 @@ ephemeris. It returns contact-midpoint TTVs and durations in days, plus TDVs
 relative to the median measured duration. Missing or edge-truncated events are
 marked as `NaN`; this threshold-based estimator is not a transit-profile fit.
 
+The Rømer example demonstrates how Io's eclipse-contact times shift as Earth
+moves around the Sun. It generates synthetic immersions and emergences using
+circular, coplanar Earth and Jupiter orbits and adds seeded 30-second timing
+noise. The orbital elements and Io properties come from NASA NSSDCA's Earth,
+Jupiter, and Jovian satellite fact sheets. The fit recovers the light speed
+from the slope of timing delay against Earth-Jupiter distance. These are toy
+observations, not Rømer's historical measurements. The historical reference is
+Rømer (1676), ``Démonstration touchant le mouvement de la lumière``, *Journal
+des sçavans*.
+
+```bash
+python examples/romer_light_time/romer_light_time.py --typefileplot png
+```
+
+![Synthetic Io immersion and emergence delays versus time and Earth-Jupiter distance, with the fitted light-time relation](examples/romer_light_time/visuals/romer_light_time.png)
+
 ## Light-curve modeling
 Choose the geometry and brightness model, then calculate the light curve. The
 examples below show what changes when I add a moon, a disk, a comet-like tail,

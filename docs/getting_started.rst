@@ -86,3 +86,23 @@ and duration changes around supplied linear-ephemeris transit epochs. The
 windows must not overlap. Event midpoints are estimated from interpolated
 0.1%-depth contacts, and undetected or incomplete events are returned as NaN.
 This is a threshold-based measurement, not a transit-profile fit.
+
+Rømer's 1676 interpretation of Io's immersion into and emergence from
+Jupiter's shadow used changing eclipse times to infer that light travels at a
+finite speed. The Ephesos example below illustrates that argument with
+synthetic timings, not historical observations. It assumes circular,
+coplanar Earth and Jupiter orbits, a fixed eclipse duration, and seeded
+30-second timing noise. Orbital values come from NASA NSSDCA's Earth, Jupiter,
+and Jovian satellite fact sheets. The historical source is Rømer (1676),
+``Démonstration touchant le mouvement de la lumière``, *Journal des sçavans*.
+
+.. code-block:: console
+
+   python examples/romer_light_time/romer_light_time.py --typefileplot png
+
+The two panels show the synthetic observed-minus-ephemeris delays against time
+and Earth-Jupiter distance. Fitting the delay slope recovers the injected speed
+of light.
+
+.. image:: ../examples/romer_light_time/visuals/romer_light_time.png
+   :alt: Synthetic Io eclipse-contact delays versus time and Earth-Jupiter distance with a fitted light-time relation.
