@@ -18,6 +18,7 @@ from .models import (
     evaluate_self_lensing_model,
     evaluate_sinusoidal_ttv,
     evaluate_transit_model,
+    derive_transit_timing_variations,
     mutual_hill_separations,
 )
 from .exomoon_timing import evaluate_exomoon_transit_time_offsets

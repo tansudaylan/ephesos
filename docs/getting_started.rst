@@ -79,3 +79,10 @@ residuals. Run it from the repository root after installing the ``ttv`` extra:
 .. code-block:: console
 
    python examples/photodynamical_ttv/photodynamical_ttv.py
+
+For an observed light curve normalized to unit out-of-transit flux,
+``ephesos.models.derive_transit_timing_variations`` estimates per-event timing
+and duration changes around supplied linear-ephemeris transit epochs. The
+windows must not overlap. Event midpoints are estimated from interpolated
+0.1%-depth contacts, and undetected or incomplete events are returned as NaN.
+This is a threshold-based measurement, not a transit-profile fit.

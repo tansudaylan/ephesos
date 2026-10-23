@@ -32,6 +32,11 @@ longitude [degrees], periapsis argument [degrees], and mean anomaly [degrees].
 Its final argument is the absolute integration end time in days. Missing
 transits are excluded without renumbering later epochs. The sinusoidal model is
 phenomenological and does not calculate gravitational interactions.
+For normalized observed light curves, `derive_transit_timing_variations()`
+measures complete events in non-overlapping windows around a supplied linear
+ephemeris. It returns contact-midpoint TTVs and durations in days, plus TDVs
+relative to the median measured duration. Missing or edge-truncated events are
+marked as `NaN`; this threshold-based estimator is not a transit-profile fit.
 
 ## Light-curve modeling
 Choose the geometry and brightness model, then calculate the light curve. The

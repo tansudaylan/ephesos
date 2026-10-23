@@ -65,6 +65,58 @@ def test_sinusoidal_transit_times_combine_ephemeris_and_ttv() -> None:
     np.testing.assert_allclose(predicted_times, expected_times)
 
 
+def test_transit_timing_variations_recover_complete_event_timing_and_duration() -> None:
+    from ephesos import derive_transit_timing_variations
+
+    time_days = np.arange(-0.2, 10.2, 0.002)  # [day]
+    transit_epochs = np.array((0.0, 1.0, 2.0, 3.0))
+    predicted_times = 1.0 + 2.0 * transit_epochs  # [day]
+    timing_offsets = np.array((0.01, -0.02, 0.03, -0.01))  # [day]
+    durations = np.array((0.16, 0.20, 0.24, 0.20))  # [day]
+    relative_flux = np.ones(time_days.shape)
+    for center, duration in zip(predicted_times + timing_offsets, durations):
+        relative_time = np.abs(time_days - center) / (0.5 * duration)
+        transit_shape = np.clip(1.0 - relative_time**2, 0.0, 1.0)
+        relative_flux -= 0.01 * transit_shape
+
+    result = derive_transit_timing_variations(
+        time_days,
+        relative_flux,
+        transit_epochs,
+        epoch_time_days=1.0,  # [day]
+        orbital_period_days=2.0,  # [day]
+        window_half_width_days=0.3,  # [day]
+    )
+
+    np.testing.assert_allclose(result["timing_variations_days"], timing_offsets, atol=0.002)
+    np.testing.assert_allclose(result["durations_days"], durations, atol=0.004)
+    np.testing.assert_allclose(
+        result["duration_variations_days"], durations - np.median(durations), atol=0.004
+    )
+
+
+def test_transit_timing_variations_mark_missing_events_as_nan() -> None:
+    from ephesos import derive_transit_timing_variations
+
+    time_days = np.arange(-0.2, 6.2, 0.002)  # [day]
+    relative_flux = np.ones(time_days.shape)
+    relative_time = np.abs(time_days - 1.0) / 0.1
+    relative_flux -= 0.01 * np.clip(1.0 - relative_time**2, 0.0, 1.0)
+
+    result = derive_transit_timing_variations(
+        time_days,
+        relative_flux,
+        np.array((0.0, 1.0, 2.0)),
+        epoch_time_days=1.0,  # [day]
+        orbital_period_days=2.0,  # [day]
+        window_half_width_days=0.3,  # [day]
+    )
+
+    assert np.isfinite(result["timing_variations_days"][0])
+    assert np.isnan(result["timing_variations_days"][1:]).all()
+    assert np.isnan(result["duration_variations_days"][1:]).all()
+
+
 def test_nbody_ttv_adapter_keeps_planet_order_and_discards_missing_transits(monkeypatch) -> None:
     calls = []
 

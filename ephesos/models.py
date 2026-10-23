@@ -579,6 +579,94 @@ def derive_transit_feature_departures(
     )
 
 
+def derive_transit_timing_variations(
+    time_days: np.ndarray,
+    relative_flux: np.ndarray,
+    transit_epochs: np.ndarray,
+    *,
+    epoch_time_days: float,
+    orbital_period_days: float,
+    window_half_width_days: float,
+) -> dict[str, np.ndarray]:
+    """Estimate event times, TTVs, durations, and TDVs from a normalized light curve.
+
+    The event midpoint is the midpoint between its interpolated 0.1%-depth
+    contacts. Incomplete or undetected events are returned as NaN.
+    """
+
+    time_days = np.asarray(time_days, dtype=float)
+    relative_flux = np.asarray(relative_flux, dtype=float)
+    transit_epochs = np.asarray(transit_epochs, dtype=float)
+    scalar_parameters = np.asarray(
+        (epoch_time_days, orbital_period_days, window_half_width_days), dtype=float
+    )
+    if time_days.ndim != 1 or relative_flux.shape != time_days.shape or time_days.size < 3:
+        raise ValueError("time_days and relative_flux must be matching one-dimensional arrays")
+    if transit_epochs.ndim != 1 or transit_epochs.size == 0 or not np.isfinite(transit_epochs).all():
+        raise ValueError("transit_epochs must be a nonempty finite one-dimensional array")
+    if not np.isfinite(time_days).all() or not np.isfinite(relative_flux).all():
+        raise ValueError("light-curve inputs must contain only finite values")
+    if not np.all(np.diff(time_days) > 0.0):
+        raise ValueError("time_days must be strictly increasing")
+    if not np.isfinite(scalar_parameters).all():
+        raise ValueError("ephemeris and window parameters must be finite")
+    if orbital_period_days <= 0.0 or window_half_width_days <= 0.0:
+        raise ValueError("orbital period and window half-width must be positive")
+    if 2.0 * window_half_width_days >= orbital_period_days:
+        raise ValueError("transit windows must not overlap")
+
+    predicted_times = evaluate_linear_transit_times(
+        transit_epochs, epoch_time_days, orbital_period_days
+    )  # [day]
+    measured_times = np.full(transit_epochs.shape, np.nan)  # [day]
+    durations = np.full(transit_epochs.shape, np.nan)  # [day]
+
+    for index, predicted_time in enumerate(predicted_times):
+        in_window = np.abs(time_days - predicted_time) <= window_half_width_days
+        event_time = time_days[in_window]
+        event_flux = relative_flux[in_window]
+        if event_time.size < 3:
+            continue
+
+        deficit = np.clip(1.0 - event_flux, 0.0, None)
+        depth = float(np.max(deficit))
+        if depth <= 0.0:
+            continue
+        threshold = 0.001 * depth
+        in_transit = deficit > threshold
+        boundaries = np.diff(in_transit.astype(int), prepend=0, append=0)
+        starts = np.flatnonzero(boundaries == 1)
+        stops = np.flatnonzero(boundaries == -1) - 1
+        if starts.size != 1 or stops.size != 1:
+            continue
+        start = int(starts[0])
+        stop = int(stops[0])
+        if start == 0 or stop == event_time.size - 1:
+            continue
+
+        left_fraction = (threshold - deficit[start - 1]) / (deficit[start] - deficit[start - 1])
+        right_fraction = (threshold - deficit[stop + 1]) / (deficit[stop] - deficit[stop + 1])
+        contact_start = event_time[start - 1] + left_fraction * (
+            event_time[start] - event_time[start - 1]
+        )  # [day]
+        contact_end = event_time[stop + 1] + right_fraction * (
+            event_time[stop] - event_time[stop + 1]
+        )  # [day]
+        measured_times[index] = 0.5 * (contact_start + contact_end)  # [day]
+        durations[index] = contact_end - contact_start  # [day]
+
+    valid_durations = durations[np.isfinite(durations)]  # [day]
+    duration_reference = np.median(valid_durations) if valid_durations.size else np.nan  # [day]
+    return {
+        "transit_epochs": transit_epochs,
+        "predicted_times_days": predicted_times,
+        "measured_times_days": measured_times,
+        "timing_variations_days": measured_times - predicted_times,
+        "durations_days": durations,
+        "duration_variations_days": durations - duration_reference,
+    }
+
+
 def evaluate_projected_occultor_model(
     time_days: np.ndarray,
     *,
