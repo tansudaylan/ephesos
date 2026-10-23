@@ -70,6 +70,7 @@ motion, finite-lens occultation, dilution, and cadence integration.
 
     python examples/minimal_transit/minimal_transit.py --typefileplot png
     python examples/PlanetsWithDisks/PlanetsWithDisks.py
+    python examples/PlanetsWithDisks/PlanetsWithDisks.py --bokeh
     python examples/arbitrary_occultor/arbitrary_occultor.py
     python examples/astromusers_logo_occultor/astromusers_logo_occultor.py
     python examples/compact_multiplanet/compact_multiplanet.py

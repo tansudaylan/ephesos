@@ -142,9 +142,23 @@ Single-system examples write compact GIFs without external data or
 command-line animation tools. The population example writes a static corner plot
 of features derived from the synthesized light curves.
 
+The circumplanetary-disk example compares spherical, face-on, and two edge-on
+models with the same occulting area. The lower panel shows their departures from
+the spherical model. Add `--bokeh` to write interactive light-curve and residual
+panels from the same calculated models.
+
+```bash
+python examples/PlanetsWithDisks/PlanetsWithDisks.py --bokeh
+```
+
+![Equal-area circumplanetary-disk transit models and residuals](examples/PlanetsWithDisks/PlanetsWithDisks.png)
+
+[Interactive circumplanetary-disk light curves](examples/PlanetsWithDisks/visuals/circumplanetary_disk_morphologies.html)
+
 ```bash
 python examples/minimal_transit/minimal_transit.py
 python examples/PlanetsWithDisks/PlanetsWithDisks.py
+python examples/PlanetsWithDisks/PlanetsWithDisks.py --bokeh
 python examples/exomoon/exomoon.py
 python examples/exomoon/exomoon.py --bokeh
 python examples/exomoon/exomoon_transit_times.py

@@ -55,6 +55,23 @@ def test_exomoon_example_writes_interactive_bokeh_plot(tmp_path):
     assert "Planet and exomoon transit signals" in html
 
 
+def test_planet_disk_example_writes_interactive_bokeh_plot(tmp_path):
+    pytest.importorskip("bokeh")
+    output_path = tmp_path / "planet_disk.html"
+
+    time_hours, relative_flux, result_path = load_example("PlanetsWithDisks").run_example(
+        output_path
+    )
+
+    assert result_path == output_path
+    assert time_hours.ndim == 1
+    assert set(relative_flux) == {"disk", "face_on_rings", "horizontal_rings", "vertical_rings"}
+    html = output_path.read_text(encoding="utf-8")
+    assert "Bokeh" in html
+    assert "Equal-area circumplanetary-disk transits" in html
+    assert "Disk-model departures from a spherical planet" in html
+
+
 @pytest.mark.parametrize(
     "name",
     ("arbitrary_occultor", "run_WhiteDwarf", "run_WASP43"),

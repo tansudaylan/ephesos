@@ -56,9 +56,54 @@ def run_example(
 
     time_hours, relative_flux = evaluate_models()
     output_path = Path(output_path)
-    if output_path.suffix.lower() not in (".png", ".pdf"):
-        raise ValueError("output_path must have a .png or .pdf suffix")
+    if output_path.suffix.lower() not in (".png", ".pdf", ".html"):
+        raise ValueError("output_path must have a .png, .pdf, or .html suffix")
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    colors = ("black", "#16697A", "#C73E1D", "#2D7D46")
+    benchmark_flux = relative_flux["disk"]
+    if output_path.suffix.lower() == ".html":
+        from bokeh.layouts import column
+        from bokeh.models import HoverTool
+        from bokeh.plotting import figure as bokeh_figure
+        from tdpy.plotting import save_bokeh_html
+
+        tools = "pan,wheel_zoom,box_zoom,reset,save"
+        flux_plot = bokeh_figure(
+            title="Equal-area circumplanetary-disk transits",
+            height=340,
+            sizing_mode="stretch_width",
+            tools=tools,
+        )
+        residual_plot = bokeh_figure(
+            title="Disk-model departures from a spherical planet",
+            height=260,
+            sizing_mode="stretch_width",
+            x_range=flux_plot.x_range,
+            tools=tools,
+        )
+        for color, (occultor_type, label) in zip(colors, MORPHOLOGIES.items()):
+            flux = relative_flux[occultor_type]
+            flux_plot.line(time_hours, flux, color=color, line_width=2, legend_label=label)
+            if occultor_type != "disk":
+                residual_plot.line(
+                    time_hours,
+                    1e3 * (flux - benchmark_flux),
+                    color=color,
+                    line_width=2,
+                    legend_label=label,
+                )
+        for plot, y_label, tooltips in (
+            (flux_plot, "Relative flux", [("Flux", "$y")]),
+            (residual_plot, "Departure [ppt]", [("Departure [ppt]", "$y")]),
+        ):
+            plot.grid.visible = False
+            plot.xaxis.axis_label = "Time from mid-transit [hour]"
+            plot.yaxis.axis_label = y_label
+            plot.legend.location = "bottom_right"
+            plot.add_tools(HoverTool(tooltips=[("Time [hour]", "$x"), *tooltips]))
+        save_bokeh_html(column(flux_plot, residual_plot), output_path, title="Circumplanetary disks")
+        return time_hours, relative_flux, output_path
 
     figure, (flux_axis, residual_axis) = plt.subplots(
         2,
@@ -67,8 +112,6 @@ def run_example(
         sharex=True,
         gridspec_kw={"height_ratios": (2.0, 1.0)},
     )
-    colors = ("black", "#16697A", "#C73E1D", "#2D7D46")
-    benchmark_flux = relative_flux["disk"]
     for color, (occultor_type, label) in zip(colors, MORPHOLOGIES.items()):
         flux_axis.plot(time_hours, relative_flux[occultor_type], color=color, label=label)
         if occultor_type != "disk":
@@ -105,8 +148,10 @@ def main() -> int:
         type=Path,
         default=Path(__file__).parent / "visuals" / "circumplanetary_disk_morphologies.png",
     )
+    parser.add_argument("--bokeh", action="store_true", help="write an interactive HTML version")
     arguments = parser.parse_args()
-    run_example(arguments.output_path)
+    output_path = arguments.output_path.with_suffix(".html") if arguments.bokeh else arguments.output_path
+    run_example(output_path)
     return 0
 
 
