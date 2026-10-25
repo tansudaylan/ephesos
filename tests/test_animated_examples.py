@@ -129,7 +129,28 @@ def test_population_example_writes_derived_feature_corner_plot(tmp_path):
         assert image.height > 1_000
 
 
-def test_self_lensing_example_writes_brightening_figure(tmp_path):
+def test_self_lensing_example_writes_brightening_figure(tmp_path, monkeypatch):
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+    from matplotlib.figure import Figure
+
+    savefig = Figure.savefig
+
+    def check_layout(figure, *arguments, **options):
+        FigureCanvasAgg(figure)
+        figure.canvas.draw()
+        renderer = figure.canvas.get_renderer()
+        for panel in figure.subfigs:
+            legend = panel.legends[0].get_window_extent(renderer)
+            axis = panel.axes[0]
+            assert not legend.overlaps(axis.get_window_extent(renderer))
+            assert not legend.overlaps(axis.title.get_window_extent(renderer))
+            if axis.get_xlabel():
+                assert not legend.overlaps(axis.xaxis.label.get_window_extent(renderer))
+            assert figure.bbox.contains(legend.x0, legend.y0)
+            assert figure.bbox.contains(legend.x1, legend.y1)
+        return savefig(figure, *arguments, **options)
+
+    monkeypatch.setattr(Figure, "savefig", check_layout)
     example = load_example("self_lensing")
 
     time_hours, system_fluxes, effect_fluxes, output_path = example.run_example(
@@ -144,7 +165,15 @@ def test_self_lensing_example_writes_brightening_figure(tmp_path):
     assert all(np.argmax(relative_flux) == relative_flux.size // 2 for relative_flux in all_fluxes)
     system_peaks = [np.max(relative_flux) for relative_flux in system_fluxes.values()]
     assert np.all(np.diff(system_peaks[1:]) > 0.0)
-    assert 0.01 < 1e6 * (system_peaks[0] - 1.0) < 0.1
+    assert 0.5 < 1e6 * (system_peaks[0] - 1.0) < 1.0
+    assert all(any(name in label for label in system_fluxes) for name in ("planet", "White dwarf", "Neutron star", "Black hole"))
+    for relative_flux in all_fluxes:
+        assert np.all(relative_flux >= 1.0 - 1e-12)
+        np.testing.assert_allclose(relative_flux, relative_flux[::-1], atol=1e-12, rtol=0.0)
+    before = output_path.read_bytes()
+    with pytest.raises(FileExistsError, match="Refusing to overwrite"):
+        example.run_example(output_path)
+    assert output_path.read_bytes() == before
     effect_peaks = [np.max(relative_flux) for relative_flux in effect_fluxes.values()]
     assert effect_peaks[0] > effect_peaks[1]
     assert effect_peaks[0] > effect_peaks[2]

@@ -1,0 +1,36 @@
+{
+  "tag": "20261025_165024",
+  "source_sha256": {
+    "tansudaylan/ephesos/examples/self_lensing/self_lensing.py": "37f21c6a732b7a8e74745ef7a358b31ff508d6e1e8459f1b6b1575ff35b475b3",
+    "tansudaylan/chalcedon/chalcedon/main.py": "559f49112c701dc59cbe1fa3e03e110ab367bb9f54993542d266ff6e4382c6fc"
+  },
+  "system_peaks_ppm": {
+    "Jupiter-mass planet ($1\\,M_\\mathrm{Jup}$)": 0.7923689628874797,
+    "White dwarf ($0.6\\,M_\\odot$)": 581.683913876585,
+    "Neutron star ($1.4\\,M_\\odot$)": 1552.162857081818,
+    "Black hole ($8\\,M_\\odot$)": 13640.977941834497
+  },
+  "system_labels": [
+    "Jupiter-mass planet ($1\\,M_\\mathrm{Jup}$)",
+    "White dwarf ($0.6\\,M_\\odot$)",
+    "Neutron star ($1.4\\,M_\\odot$)",
+    "Black hole ($8\\,M_\\odot$)"
+  ],
+  "effect_labels": [
+    "Fiducial limb darkening, $b=0.2$",
+    "Uniform source, $b=0.2$",
+    "Limb darkening, $b=0.8$"
+  ],
+  "period_days": 30.0,
+  "source_mass_solar": 1.0,
+  "source_radius_solar": 1.0,
+  "lens_masses_solar": {
+    "Jupiter-mass planet ($1\\,M_\\mathrm{Jup}$)": 0.000955,
+    "White dwarf ($0.6\\,M_\\odot$)": 0.6,
+    "Neutron star ($1.4\\,M_\\odot$)": 1.4,
+    "Black hole ($8\\,M_\\odot$)": 8.0
+  },
+  "impact_parameter": 0.2,
+  "assumptions": "Circular point-lens self-lensing with a limb-darkened finite source; occultation by the lens is omitted.",
+  "stdout_bytes": 0
+}

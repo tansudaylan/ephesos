@@ -58,7 +58,7 @@ Examples
 --------
 
 The emitting-companion example shows how planetary surface brightness sets the
-secondary-eclipse depth. The self-lensing example compares white-dwarf,
+secondary-eclipse depth. The self-lensing example compares planetary, white-dwarf,
 neutron-star, and black-hole toy systems and isolates the effects of limb
 darkening and projected alignment. The known-self-lenser example overlays
 public Kepler observations of KOI-3278 and KIC 8145411 with Ephesos circular
@@ -81,6 +81,44 @@ motion, finite-lens occultation, dilution, and cadence integration.
     python examples/run_population/run_population.py
     python examples/self_lensing/self_lensing.py
     python examples/transits_simultaneous/transits_simultaneous.py
+
+The four-lens example uses a solar-mass, solar-radius source and a 30-day orbit
+with impact parameter 0.2. Its Jupiter-mass lens produces a pulse of about
+0.8 ppm. The shared Chalcedon calculation averages magnification over numerical
+pixels and integrates the central pixel containing the lens singularity.
+This avoids suppressing the signal when the Einstein radius is smaller than a
+pixel. Figures are saved under ``examples/self_lensing/visuals/`` with timestamps,
+and existing outputs are preserved. These are lensing-only calculations with
+the finite size of the occulting lens omitted.
+
+Ephesos and SpaceEngine
+----------------------
+
+Ephesos calculates relative flux from specified systems and viewing geometry.
+Its examples expose the arrays behind the light curves, alongside projected
+views and animations. This makes it possible to compare a model with measured
+photometry and to test a numerical approximation against an analytic result.
+
+`SpaceEngine <https://spaceengine.org/>`_ provides an interactive, freely moving
+observer, catalog and procedurally generated planetary systems, terrain,
+atmospheres, and accelerated or reversed orbital motion. Its
+`graphics manual <https://spaceengine.org/manual/user-manual/>`_ describes
+eclipse shadows, planet shine, volumetric rings, and gravitational-lensing
+visualization for compact objects. Those capabilities make it useful for
+exploring what a system looks like from different locations.
+
+The same manual also makes clear why a displayed brightness needs care in a
+photometric comparison. Antialiasing, screen resolution, dynamic image updates,
+and animated dithering affect the rendered pixels. A matched light-curve
+comparison would require identical orbital elements, stellar brightness,
+observer geometry, time samples, and a stated conversion from rendered images
+to integrated flux. Ephesos's limb darkening and finite-source lensing would
+need matching settings as well.
+
+This comparison uses the documented SpaceEngine capabilities and executed
+Ephesos examples. SpaceEngine's listed operating systems are Windows 10/11,
+and a SpaceEngine run was not performed here. A cross-engine flux residual,
+accuracy ranking, or rendering-speed comparison therefore remains unmeasured.
 
 
 

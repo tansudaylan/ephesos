@@ -282,12 +282,20 @@ its light curve with the logo's central circular component on the same orbit.
 The self-lensing example compares deterministic 30-day binaries containing a
 Jupiter-mass planet and $0.6\,M_\odot$ white-dwarf, $1.4\,M_\odot$
 neutron-star, and $8\,M_\odot$ black-hole companions orbiting a solar analog.
-The planet's roughly 0.04-ppm pulse has its own expanded-scale panel. The
+The planet's roughly 0.8-ppm pulse has its own expanded-scale panel. The
 white-dwarf comparison isolates the effects of quadratic limb darkening and
 projected impact parameter. These explicitly parameterized toy systems have
 not been fit to observed data.
 
-![Toy self-lensing systems and finite-source effects](examples/self_lensing/self_lensing.png)
+![Toy self-lensing systems and finite-source effects](examples/self_lensing/visuals/self_lensing_20261025_165024.png)
+
+The shared Chalcedon calculation averages magnification across each numerical
+pixel and integrates the central pixel containing the point-lens singularity.
+This resolves the planetary signal even when its Einstein radius is smaller
+than a pixel. Tests compare all four lens masses with the exact centered
+uniform-source result on both coarse and default grids. New example figures
+are timestamped under `examples/self_lensing/visuals/`; earlier files are
+preserved.
 
 The known-self-lenser example compares Ephesos predictions with public Kepler
 observations of KOI-3278 and KIC 8145411. The bundled compact tables contain

@@ -4,6 +4,7 @@
 from tdpy.verbosity import print
 
 import argparse
+from datetime import datetime, timezone
 from tdpy.cli import add_plot_arguments
 from pathlib import Path
 
@@ -77,10 +78,18 @@ def run_example(
 
     if typefileplot not in ("png", "pdf"):
         raise ValueError("typefileplot must be 'png' or 'pdf'")
-    time_hours, system_fluxes, effect_fluxes = evaluate_systems()
     output_path = Path(output_path).with_suffix(f".{typefileplot}")
+    if output_path.exists():
+        raise FileExistsError(f"Refusing to overwrite self-lensing figure {output_path}")
+    time_hours, system_fluxes, effect_fluxes = evaluate_systems()
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    figure, axes = plt.subplots(3, 1, figsize=(7.2, 8.5), sharex=True)
+    figure = plt.figure(figsize=(7.2, 9.6), layout="constrained")
+    panels = figure.subfigures(3, 1)
+    axes = [panel.subplots() for panel in panels]
+    for axis in axes[1:]:
+        axis.sharex(axes[0])
+    for axis in axes[:-1]:
+        axis.tick_params(labelbottom=False)
     colors = ("#16697A", "#C73E1D", "#2D7D46")
     planet_label, planet_flux = next(iter(system_fluxes.items()))
     for color, (label, relative_flux) in zip(
@@ -119,14 +128,16 @@ def run_example(
     axes[2].set_title(r"Source brightness and alignment reshape a $0.6\,M_\odot$ pulse")
     axes[2].set_xlabel("Time from conjunction [hour]")
     axes[2].set_ylabel("Flux excess [ppm]")
-    for axis in axes:
+    for panel, axis in zip(panels, axes):
         axis.grid(False)
-        axis.legend(loc="upper right", fancybox=True, framealpha=1.0, fontsize=11.0)
+        handles, labels = axis.get_legend_handles_labels()
+        panel.legend(handles, labels, loc="outside lower center", fancybox=True,
+                     framealpha=1.0, fontsize=11.0)
         axis.tick_params(labelsize=11.0)
         axis.title.set_fontsize(11.0)
         axis.xaxis.label.set_size(11.0)
         axis.yaxis.label.set_size(11.0)
-    figure.tight_layout()
+    axes[0].set_xlim(-4.0, 4.0)
 
     print(f"Writing to {output_path}...")
     figure.savefig(
@@ -143,7 +154,7 @@ def main() -> int:
     parser.add_argument(
         "--output-path",
         type=Path,
-        default=Path(__file__).with_name("self_lensing.png"),
+        default=Path(__file__).parent / "visuals" / f"self_lensing_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.png",
     )
     add_plot_arguments(parser)
     arguments = parser.parse_args()
