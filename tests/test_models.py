@@ -117,6 +117,70 @@ def test_transit_timing_variations_mark_missing_events_as_nan() -> None:
     assert np.isnan(result["duration_variations_days"][1:]).all()
 
 
+@pytest.mark.parametrize("input_name", [
+    "time_days", "relative_flux", "transit_epochs", "epoch_time_days",
+    "orbital_period_days", "window_half_width_days",
+])
+def test_transit_timing_rejects_masked_inputs(input_name):
+    time_days = np.linspace(0.7, 1.3, 121)  # [day]
+    inputs = {
+        "time_days": time_days,
+        "relative_flux": 1.0 - 0.01 * np.clip(
+            1.0 - ((time_days - 1.0) / 0.1)**2, 0.0, 1.0
+        ),
+        "transit_epochs": np.array([0.0]),
+        "epoch_time_days": 1.0,  # [day]
+        "orbital_period_days": 2.0,  # [day]
+        "window_half_width_days": 0.3,  # [day]
+    }
+    inputs[input_name] = np.ma.array(inputs[input_name], mask=True)
+
+    with pytest.raises(ValueError, match=f"{input_name}.*masked"):
+        ephesos.derive_transit_timing_variations(**inputs)
+
+
+def test_transit_timing_preserves_fully_unmasked_containers():
+    time_days = np.linspace(0.7, 1.3, 121)  # [day]
+    inputs = {
+        "time_days": time_days,
+        "relative_flux": 1.0 - 0.01 * np.clip(
+            1.0 - ((time_days - 1.0) / 0.1)**2, 0.0, 1.0
+        ),
+        "transit_epochs": np.array([0.0]),
+        "epoch_time_days": 1.0,  # [day]
+        "orbital_period_days": 2.0,  # [day]
+        "window_half_width_days": 0.3,  # [day]
+    }
+    expected = ephesos.derive_transit_timing_variations(**inputs)
+    masked_containers = {name: np.ma.array(values, mask=False)
+                         for name, values in inputs.items()}
+
+    result = ephesos.derive_transit_timing_variations(**masked_containers)
+
+    for name in expected:
+        np.testing.assert_array_equal(result[name], expected[name])
+
+
+@pytest.mark.parametrize("event_kind", ["truncated", "disconnected"])
+def test_transit_timing_marks_unmeasurable_contacts_as_nan(event_kind):
+    time_days = np.linspace(0.95 if event_kind == "truncated" else 0.7, 1.3, 141)  # [day]
+    centers = [1.0] if event_kind == "truncated" else [0.9, 1.1]  # [day]
+    relative_flux = np.ones(time_days.size)
+    for center in centers:
+        relative_flux -= 0.01 * np.clip(
+            1.0 - ((time_days - center) / 0.08)**2, 0.0, 1.0
+        )
+
+    result = ephesos.derive_transit_timing_variations(
+        time_days, relative_flux, np.array([0.0]),
+        epoch_time_days=1.0, orbital_period_days=2.0, window_half_width_days=0.3,
+    )
+
+    for name in ("measured_times_days", "timing_variations_days", "durations_days",
+                 "duration_variations_days"):
+        assert np.isnan(result[name]).all()
+
+
 def test_nbody_ttv_adapter_keeps_planet_order_and_discards_missing_transits(monkeypatch) -> None:
     calls = []
 

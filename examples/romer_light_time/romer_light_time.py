@@ -28,11 +28,11 @@ TIMING_UNCERTAINTY_SECONDS = 30.0  # [s]
 
 
 def earth_jupiter_distance_au(time_days: np.ndarray) -> np.ndarray:
-    """Return circular, coplanar Earth-Jupiter distances at emission times."""
+    """Return circular, coplanar Earth-Jupiter distances, with opposition at zero."""
 
     time_days = np.asarray(time_days, dtype=float)
     earth_phase = 2.0 * np.pi * time_days / EARTH_PERIOD_DAYS  # [rad]
-    jupiter_phase = np.pi + 2.0 * np.pi * time_days / JUPITER_PERIOD_DAYS  # [rad]
+    jupiter_phase = 2.0 * np.pi * time_days / JUPITER_PERIOD_DAYS  # [rad]
     distance_squared_au = (
         EARTH_SEMIMAJOR_AXIS_AU**2
         + JUPITER_SEMIMAJOR_AXIS_AU**2

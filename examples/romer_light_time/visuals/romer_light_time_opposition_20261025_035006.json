@@ -1,0 +1,15 @@
+{
+  "run_tag": "20261025_035006",
+  "source_sha256": "c9a7cbe3d6df44bd984cdd2949c0407de4fab240406714e99c1a0cc32226fe5a",
+  "speed_km_s": 305291.2075390279,
+  "speed_uncertainty_km_s": 2970.9462312760916,
+  "injected_speed_km_s": 299792.458,
+  "eclipse_contact_count": 250,
+  "opposition_distance_au": 4.2033629,
+  "stdout_bytes": 0,
+  "outputs": {
+    "romer_light_time_opposition_20261025_035006.png": "6db342e799576775a2d1d2523879898f526ad1c87a39da0cad4351351c40a6eb",
+    "romer_light_time_opposition_20261025_035006.pdf": "4f15b4b741c1481ced875a71f3772ccf9523ce4ee9fc4f20c1757705c8a08824",
+    "romer_light_time_opposition_20261025_035006.npz": "5323bb6fc76d61175f9ec3ec0b30c2f32a1a7e3ed5094fece8d1760605ce8651"
+  }
+}

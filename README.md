@@ -1,5 +1,7 @@
 # Ephesos
 
+Ephesos is the Greek form of [Ephesus](https://en.wikipedia.org/wiki/Ephesus), the ancient Ionian city near present-day Selcuk, Turkey. I use the name for a forward model that turns stellar and planetary configurations into observable changes in light.
+
 ## Purpose
 I use Ephesos to ask what a specified star and planetary system should look like
 in a light curve. Orbital geometry, companion sizes, and surface brightness all
@@ -33,15 +35,17 @@ Its final argument is the absolute integration end time in days. Missing
 transits are excluded without renumbering later epochs. The sinusoidal model is
 phenomenological and does not calculate gravitational interactions.
 For normalized observed light curves, `derive_transit_timing_variations()`
-measures complete events in non-overlapping windows around a supplied linear
-ephemeris. It returns contact-midpoint TTVs and durations in days, plus TDVs
-relative to the median measured duration. Missing or edge-truncated events are
-marked as `NaN`; this threshold-based estimator is not a transit-profile fit.
+ derives contact times from threshold crossings and returns contact-midpoint TTVs,
+ durations in days, and TDVs relative to the median measured duration. Missing or
+ edge-truncated events are marked as `NaN`.
+Masked light-curve or ephemeris inputs raise `ValueError` rather than exposing
+their hidden values. Fully unmasked containers retain the ordinary calculation.
 
 The Rømer example demonstrates how Io's eclipse-contact times shift as Earth
 moves around the Sun. It generates synthetic immersions and emergences using
 circular, coplanar Earth and Jupiter orbits and adds seeded 30-second timing
-noise. The orbital elements and Io properties come from NASA NSSDCA's Earth,
+noise. Time zero is opposition, when Earth lies between the Sun and Jupiter
+and the Earth-Jupiter distance is smallest. The orbital elements and Io properties come from NASA NSSDCA's Earth,
 Jupiter, and Jovian satellite fact sheets. The fit recovers the light speed
 from the slope of timing delay against Earth-Jupiter distance. These are toy
 observations, not Rømer's historical measurements. The historical reference is
@@ -278,10 +282,10 @@ its light curve with the logo's central circular component on the same orbit.
 The self-lensing example compares deterministic 30-day binaries containing a
 Jupiter-mass planet and $0.6\,M_\odot$ white-dwarf, $1.4\,M_\odot$
 neutron-star, and $8\,M_\odot$ black-hole companions orbiting a solar analog.
-The planet's roughly 0.04-ppm pulse has its own expanded-scale panel. A
-controlled white-dwarf comparison isolates the effects of quadratic limb
-darkening and projected impact parameter. These are explicit toy systems
-rather than fits to observed data.
+The planet's roughly 0.04-ppm pulse has its own expanded-scale panel. The
+white-dwarf comparison isolates the effects of quadratic limb darkening and
+projected impact parameter. These explicitly parameterized toy systems have
+not been fit to observed data.
 
 ![Toy self-lensing systems and finite-source effects](examples/self_lensing/self_lensing.png)
 
@@ -296,10 +300,10 @@ fitting the plotted data.
 
 The current Ephesos self-lensing interface assumes circular motion and omits
 finite-lens occultation, third-light dilution, and Kepler cadence integration.
-Its curves are therefore local finite-source approximations rather than
-reproductions of the papers' eccentric-orbit fits. The data files retain source
-and reduction metadata. Run `prepare_data.py` in the example directory to
-reproduce them from the public sources when network access is available.
+Its curves use local finite-source approximations. The examples do not reproduce
+the papers' eccentric-orbit fits. The data files retain source and reduction
+metadata. Run `prepare_data.py` in the example directory to reproduce them from
+the public sources when network access is available.
 
 ![Known Kepler self-lensers compared with Ephesos models](examples/known_self_lensers/known_self_lensers.png)
 
@@ -313,10 +317,10 @@ The simultaneous-transit example places two planets in an illustrative 3:2
 resonant pair with a shared mid-transit time. The animation compares their
 combined light curve with each planet's isolated contribution.
 
-The compact-system example synthesizes an illustrative seven-planet
-TRAPPIST-1-like resonant chain rather than fitting observations. It produces 21
-transit events over 12 days. Its minimum adjacent separation is 6.54 mutual Hill
-radii, exceeding the circular coplanar pairwise threshold of 3.46.
+The compact-system example simulates an illustrative seven-planet TRAPPIST-1-like
+resonant chain. It produces 21 transit events over 12 days. Its minimum adjacent
+separation is 6.54 mutual Hill radii, exceeding the circular coplanar pairwise
+threshold of 3.46.
 
 The reveal variant preserves the complete green light-curve history.
 

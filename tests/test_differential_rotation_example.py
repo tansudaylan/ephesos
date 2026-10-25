@@ -3,6 +3,7 @@ from pathlib import Path
 
 import matplotlib.image as mpimg
 import numpy as np
+import pytest
 
 
 EXAMPLE_PATH = (
@@ -28,7 +29,12 @@ def test_differential_rotation_prediction():
     )
 
 
-def test_differential_rotation_example_writes_nonblank_png(tmp_path, capsys):
+@pytest.mark.parametrize("verbosity", [None, "0", "1"])
+def test_differential_rotation_example_writes_nonblank_png(tmp_path, capsys, monkeypatch, verbosity):
+    if verbosity is None:
+        monkeypatch.delenv("TDPY_VERBOSITY", raising=False)
+    else:
+        monkeypatch.setenv("TDPY_VERBOSITY", verbosity)
     output_path = tmp_path / "differential_rotation.png"
 
     example.run_example(output_path)
@@ -37,4 +43,8 @@ def test_differential_rotation_example_writes_nonblank_png(tmp_path, capsys):
     assert image.shape[0] > 100
     assert image.shape[1] > 100
     assert image[..., :3].min() < 0.8
-    assert f"Writing to {output_path}..." in capsys.readouterr().out
+    output = capsys.readouterr().out
+    if verbosity == "1":
+        assert f"Writing to {output_path}..." in output
+    else:
+        assert output == ""

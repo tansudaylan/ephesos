@@ -594,6 +594,16 @@ def derive_transit_timing_variations(
     contacts. Incomplete or undetected events are returned as NaN.
     """
 
+    for name, values in (
+        ("time_days", time_days),
+        ("relative_flux", relative_flux),
+        ("transit_epochs", transit_epochs),
+        ("epoch_time_days", epoch_time_days),
+        ("orbital_period_days", orbital_period_days),
+        ("window_half_width_days", window_half_width_days),
+    ):
+        if np.ma.is_masked(values):
+            raise ValueError(f"{name} must not contain masked values")
     time_days = np.asarray(time_days, dtype=float)
     relative_flux = np.asarray(relative_flux, dtype=float)
     transit_epochs = np.asarray(transit_epochs, dtype=float)

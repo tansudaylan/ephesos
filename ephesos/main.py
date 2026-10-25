@@ -385,9 +385,7 @@ def make_imag(gdat, t, typecolr='real', j=None):
             if gdat.strgtitl is not None:
                 axis.set_title(gdat.strgtitl)
             else:
-                # temp
-                strgtitl = ''
-                axis.set_title(strgtitl)
+                axis.set_title('')
             
             if gdat.boolshowlcuranim:
                 bbox = dict(boxstyle='round', ec='white', fc='white')

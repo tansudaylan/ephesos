@@ -89,10 +89,17 @@ def test_orbital_euler_rotation_stages_retain_invalid_input_rejection(position, 
         orbital_euler_rotation_stages(position, angle, 0.2, 0.3)
 
 
+@pytest.mark.parametrize("verbosity", [None, "0", "1"])
 def test_save_orbital_geometry_figure_includes_finite_observer_view(
     tmp_path: Path,
     capsys,
+    monkeypatch,
+    verbosity,
 ) -> None:
+    if verbosity is None:
+        monkeypatch.delenv("TDPY_VERBOSITY", raising=False)
+    else:
+        monkeypatch.setenv("TDPY_VERBOSITY", verbosity)
     orbiting_bodies = (
         OrbitingBody("Planet b", 18.0, 0.12, 25.0, 38.0, 15.0, 65.0),
         OrbitingBody("Planet c", 34.0, 0.08, 130.0, 62.0, 95.0, 210.0),
@@ -106,7 +113,11 @@ def test_save_orbital_geometry_figure_includes_finite_observer_view(
     )
 
     assert output_path.is_file() and output_path.stat().st_size > 10_000
-    assert f"Writing to {output_path}..." in capsys.readouterr().out
+    output = capsys.readouterr().out
+    if verbosity == "1":
+        assert f"Writing to {output_path}..." in output
+    else:
+        assert output == ""
     with Image.open(output_path) as image:
         assert image.width > image.height
         assert image.width > 2_000
@@ -173,11 +184,18 @@ def test_animation_slowdown_prioritizes_transit_states() -> None:
 
 
 @pytest.mark.parametrize("typefileplot", ("png", "pdf", "html"))
+@pytest.mark.parametrize("verbosity", [None, "0", "1"])
 def test_save_light_curve_figure_supports_required_formats(
     tmp_path: Path,
     capsys,
     typefileplot: str,
+    monkeypatch,
+    verbosity,
 ) -> None:
+    if verbosity is None:
+        monkeypatch.delenv("TDPY_VERBOSITY", raising=False)
+    else:
+        monkeypatch.setenv("TDPY_VERBOSITY", verbosity)
     if typefileplot == "html":
         pytest.importorskip("bokeh")
     time_hours, relative_flux = sample_light_curve()
@@ -197,7 +215,11 @@ def test_save_light_curve_figure_supports_required_formats(
     assert result.stat().st_size > 1_000
     if typefileplot == "html":
         assert "Bokeh" in result.read_text(encoding="utf-8")
-    assert f"Writing to {result}..." in capsys.readouterr().out
+    output = capsys.readouterr().out
+    if verbosity == "1":
+        assert f"Writing to {result}..." in output
+    else:
+        assert output == ""
 
 
 def test_save_light_curve_figure_uses_white_background_by_default(tmp_path: Path) -> None:
@@ -374,7 +396,8 @@ def test_save_light_curve_animation_rejects_invalid_history_options(tmp_path: Pa
         )
 
 
-def test_save_frame_animation_combines_frames(tmp_path: Path, capsys) -> None:
+def test_save_frame_animation_combines_frames(tmp_path: Path, capsys, monkeypatch) -> None:
+    monkeypatch.setenv("TDPY_VERBOSITY", "1")
     frame_paths = [tmp_path / f"frame_{index}.png" for index in range(2)]
     for index, frame_path in enumerate(frame_paths):
         print(f"Writing to {frame_path}...")

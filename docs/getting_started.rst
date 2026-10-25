@@ -83,16 +83,18 @@ residuals. Run it from the repository root after installing the ``ttv`` extra:
 For an observed light curve normalized to unit out-of-transit flux,
 ``ephesos.models.derive_transit_timing_variations`` estimates per-event timing
 and duration changes around supplied linear-ephemeris transit epochs. The
-windows must not overlap. Event midpoints are estimated from interpolated
-0.1%-depth contacts, and undetected or incomplete events are returned as NaN.
-This is a threshold-based measurement, not a transit-profile fit.
+windows must not overlap. Event midpoints and durations come from interpolated
+0.1%-depth contacts. Undetected or incomplete events are returned as NaN.
+Masked light-curve and ephemeris inputs raise ``ValueError`` before their
+hidden values can enter the measurement. Fully unmasked containers are supported.
 
 Rømer's 1676 interpretation of Io's immersion into and emergence from
 Jupiter's shadow used changing eclipse times to infer that light travels at a
 finite speed. The Ephesos example below illustrates that argument with
 synthetic timings, not historical observations. It assumes circular,
 coplanar Earth and Jupiter orbits, a fixed eclipse duration, and seeded
-30-second timing noise. Orbital values come from NASA NSSDCA's Earth, Jupiter,
+30-second timing noise. Time zero is opposition, with Earth between the Sun
+and Jupiter and their separation smallest. Orbital values come from NASA NSSDCA's Earth, Jupiter,
 and Jovian satellite fact sheets. The historical source is Rømer (1676),
 ``Démonstration touchant le mouvement de la lumière``, *Journal des sçavans*.
 

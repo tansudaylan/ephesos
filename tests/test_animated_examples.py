@@ -342,4 +342,6 @@ def test_capabilities_notebook_covers_public_models_and_validation():
     assert "test_capability_outputs" in code
     assert "benchmark_results" in code
     assert 'Path("visuals")' in code
+    assert "figure_path.is_file()" not in code
+    assert "comparison_path.is_file()" not in code
     assert notebook["metadata"]["language_info"]["name"] == "python"
