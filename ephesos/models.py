@@ -16,6 +16,11 @@ from .geometry import OccultorType, projected_occultor_mask
 from .main import eval_modl
 
 
+def _validate_unmasked_real_inputs(values, description):
+    if any(np.ma.is_masked(value) or np.iscomplexobj(value) for value in values):
+        raise ValueError(f"{description} must contain unmasked real values")
+
+
 def evaluate_compact_object_signatures(
     period_days,
     companion_mass_solar,
@@ -25,17 +30,11 @@ def evaluate_compact_object_signatures(
 ) -> dict[str, np.ndarray]:
     """Predict compact-object beaming, ellipsoidal, and self-lensing amplitudes in ppt."""
 
+    inputs = (period_days, companion_mass_solar, stellar_radius_solar,
+              stellar_mass_solar, stellar_density_cgs)
+    _validate_unmasked_real_inputs(inputs, "Compact-object signature inputs")
     parameters = np.broadcast_arrays(
-        *(
-            np.asarray(value, dtype=float)
-            for value in (
-                period_days,
-                companion_mass_solar,
-                stellar_radius_solar,
-                stellar_mass_solar,
-                stellar_density_cgs,
-            )
-        )
+        *(np.asarray(value, dtype=float) for value in inputs)
     )
     if not all(np.isfinite(value).all() for value in parameters):
         raise ValueError("Compact-object signature inputs must be finite.")
@@ -458,15 +457,17 @@ def evaluate_multiplanet_transit_model(
     """Evaluate the combined light curve of multiple transiting planets."""
 
     time_days = _validate_time_days(time_days)
+    planet_parameters = (
+        period_days,
+        transit_epoch_days,
+        radius_ratio,
+        summed_radius_to_semimajor_axis,
+        cosine_inclination,
+    )
+    _validate_unmasked_real_inputs(planet_parameters, "planet parameters")
     parameters = tuple(
         np.asarray(parameter, dtype=float)
-        for parameter in (
-            period_days,
-            transit_epoch_days,
-            radius_ratio,
-            summed_radius_to_semimajor_axis,
-            cosine_inclination,
-        )
+        for parameter in planet_parameters
     )
     if any(parameter.ndim != 1 for parameter in parameters):
         raise ValueError("planet parameters must be one-dimensional arrays")

@@ -292,7 +292,7 @@ def make_imag(gdat, t, typecolr='real', j=None):
                             print('')
                             print('')
                             print('typecoor')
-                            print(typecoor)
+                            print(gdat.typecoor)
                             print('gdat.typesyst')
                             print(gdat.typesyst)
                             raise Exception('Could not define brgttemp.')
@@ -544,8 +544,6 @@ def retr_anomdist(phas, smax, ecce, booldiag=False):
                 print(anommean)
                 print('anomecce')
                 print(anomecce)
-                print('anomtrueinit')
-                print(anomtrueinit)
                 print('anomtrue')
                 print(anomtrue)
                 raise Exception('anomtrue calculation is anomalous.')
@@ -802,7 +800,7 @@ def proc_modl(gdat, typeeval, j, t):
                 gdat.boolgridstarlght = gdat.boolgridstarlght & gdat.boolgridstaroutscomp
 
         # brightness of the occulted primary
-        if gdat.boolsystpsys:
+        if gdat.boolsystpsys or gdat.typesyst == 'StellarBinary':
             if gdat.boolcalcdiff:
                 
                 if abs(gdat.listphaseval[j][t]) < 0.25:
@@ -925,7 +923,7 @@ def proc_modl(gdat, typeeval, j, t):
             
             fluxtotlfram = np.sum(gdat.brgtlens) + gdat.lumistarnocc - gdat.lumistarplan
             
-            if booldiag:
+            if gdat.booldiag:
                 if fluxtotlfram / gdat.lumistarnocc < 0.5 or fluxtotlfram <= 0.:
                     print('')
                     print('')
@@ -1804,7 +1802,7 @@ def eval_modl( \
             print('gdat.duratrantotlcomp [hours]')
             print(gdat.duratrantotlcomp)
 
-        if gdat.boolsystpsys:
+        if gdat.boolsystpsys or gdat.typesyst == 'StellarBinary':
             if gdat.booldiag:
                 if gdat.pericomp.size != gdat.rsmacomp.size:
                     print('gdat.rsmacomp')
@@ -2174,7 +2172,7 @@ def eval_modl( \
                 gdat.distsournormgridsour = gdat.distsourgridsour / gdat.radieins
                 
                 # magnification sampled on the source plane grid
-                gdat.magn = abs((gdat.distsournormgridsour**2 + 2.) / (2. * gdat.distsournormgridsour * np.sqrt(gdat.distsournormgridsour**2 + 4.)) + 0.5)
+                gdat.magn = abs(0.5 * chalcedon.retr_magnpntslens(gdat.distsournormgridsour) + 0.5)
                 
                 #for lll in range(gdat.magn.size):
                 #    print('dist: %g magn: %g' % (gdat.distsournorm.flatten()[lll], gdat.magn.flatten()[lll]))
@@ -2567,19 +2565,23 @@ def eval_modl( \
         dictefes['rflx'] = rflxtranmodl
         
         if gdat.masscomp is not None and gdat.massstar is not None and gdat.radistar is not None:
-            densstar = 1.4 * gdat.massstar / gdat.radistar**3
-            deptbeam = 1e-3 * tdpy.retr_deptbeam(gdat.pericomp, gdat.massstar, gdat.masscomp)
-            deptelli = 1e-3 * tdpy.retr_deptelli(gdat.pericomp, densstar, gdat.massstar, gdat.masscomp)
+            densstar = tdpy.stellar_bulk_density(
+                gdat.massstar, gdat.radistar, solar_density_g_cm3=1.4
+            )
+            deptbeam = 1e-3 * tdpy.retr_deptbeam(gdat.pericomp, gdat.massstar, gdat.masscompsolr)
+            deptelli = 1e-3 * tdpy.retr_deptelli(gdat.pericomp, densstar, gdat.massstar, gdat.masscompsolr)
             dictefes['rflxslen'] = [[] for j in gdat.indxcomp]
             dictefes['rflxbeam'] = [[] for j in gdat.indxcomp]
             dictefes['rflxelli'] = [[] for j in gdat.indxcomp]
+            rflxnomod = dictefes['rflx'].copy()
 
             for j in gdat.indxcomp:
                 
-                dictefes['rflxslen'][j] = dictefes['rflx']
+                dictefes['rflxslen'][j] = rflxnomod.copy()
                 
-                dictefes['rflxbeam'][j] = 1. + deptbeam * np.sin(gdat.phascomp[j])
-                dictefes['rflxelli'][j] = 1. + deptelli * np.sin(2. * gdat.phascomp[j])
+                phaseangle = 2. * np.pi * gdat.phascomp[j]
+                dictefes['rflxbeam'][j] = 1. + deptbeam[j] * np.sin(phaseangle)
+                dictefes['rflxelli'][j] = 1. - deptelli[j] * np.cos(2. * phaseangle)
                 
                 dictefes['rflx'] += dictefes['rflxelli'][j] - 2.
                 dictefes['rflx'] += dictefes['rflxbeam'][j]
@@ -2725,7 +2727,7 @@ def eval_modl( \
         indxtimeimaglfov = np.linspace(0., maxm, numbimaglfov).astype(int)
         
         #gdat.listsegm = [[] for j in gdat.indxcomp]
-        gdat.numbsegmfade = 10
+        gdat.numbsegmfade = min(10, gdat.numbtime)
         gdat.indxsegmfade = np.arange(gdat.numbsegmfade)
         gdat.indxsegmfadetime = (gdat.indxtime / gdat.numbtime * gdat.numbsegmfade).astype(int)
         gdat.indxtimesegmfade = [[] for ou in gdat.indxsegmfade]
@@ -2744,8 +2746,17 @@ def eval_modl( \
                 print('gdat.dictvarborbt[anomtrue][:, j]')
                 summgene(gdat.dictvarborbt['anomtrue'][:, j])
 
+            populated_segments = np.zeros(gdat.numbsegmfade, dtype=bool)
             for ou in gdat.indxsegmfade:
-                gdat.listalphline[j][ou] = np.mean(gdat.dictvarborbt['anomtrue'][gdat.indxtimesegmfade[ou], j])
+                time_indices = gdat.indxtimesegmfade[ou]
+                if time_indices.size:
+                    gdat.listalphline[j][ou] = np.mean(gdat.dictvarborbt['anomtrue'][time_indices, j])
+                    populated_segments[ou] = True
+
+            if np.any(populated_segments):
+                gdat.listalphline[j][~populated_segments] = np.min(gdat.listalphline[j][populated_segments])
+            else:
+                gdat.listalphline[j].fill(0.0)
             gdat.listalphline[j] = _normalize_alpha_series(gdat.listalphline[j])
             
             #for t in gdat.indxtime:

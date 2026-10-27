@@ -89,7 +89,7 @@ def run_example(output_path: Path) -> tuple[list[tuple[np.ndarray, np.ndarray]],
             color=("#16697A", "#C73E1D")[planet_index % 2],
         )
         axis.set_ylabel("O-C [minute]")
-        axis.set_title(f"Planet {planet_index + 1}: P={PLANET_PARAMETERS[planet_index, 1]:g} d")
+        axis.set_title(f"Planet {planet_index + 1}, P={PLANET_PARAMETERS[planet_index, 1]:g} d")
         axis.grid(False)
     axes[-1, 0].set_xlabel("Transit epoch")
     figure.suptitle(

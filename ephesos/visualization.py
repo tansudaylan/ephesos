@@ -403,8 +403,6 @@ def save_corner_figure(
     if typefileplot not in ("png", "pdf"):
         raise ValueError("typefileplot must be 'png' or 'pdf'")
 
-    output_path = Path(output_path).with_suffix(f".{typefileplot}")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
     figure = corner.corner(
         samples,
         labels=labels,

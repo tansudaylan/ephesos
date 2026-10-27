@@ -1,16 +1,30 @@
 # Ephesos
 
-Ephesos is the Greek form of [Ephesus](https://en.wikipedia.org/wiki/Ephesus), the ancient Ionian city near present-day Selcuk, Turkey. I use the name for a forward model that turns stellar and planetary configurations into observable changes in light.
+Ephesos is the Greek form of [Ephesus](https://en.wikipedia.org/wiki/Ephesus), the ancient Ionian city near present-day Selcuk, Turkey. I chose the name for a forward model that turns stellar and planetary configurations into changes in light.
 
-## Purpose
-I use Ephesos to ask what a specified star and planetary system should look like
-in a light curve. Orbital geometry, companion sizes, and surface brightness all
-leave their mark. I want to see the effect of each assumption before trying to
-infer it from observations.
+## Overview
+I use Ephesos to predict light curves from specified stellar and planetary
+configurations. Orbital geometry, companion size, and surface brightness shape
+the signal. I vary these assumptions to see how the predicted curve responds
+before comparing it with observations.
 
 The core workflow evaluates sky-projected brightness through `ephesos.eval_modl()`.
 The concise `ephesos.evaluate_transit_model()` interface covers deterministic
 single-companion transit calculations.
+
+`evaluate_compact_object_signatures()` predicts Doppler-beaming, ellipsoidal,
+and self-lensing amplitudes in ppt from period [day], companion and stellar
+masses [solar mass], stellar radius [solar radius], and density [g cm^-3].
+These inputs must be finite, positive, unmasked real values. Complex arrays,
+including those with zero imaginary components, are rejected before conversion.
+Fully unmasked containers preserve the ordinary calculation. The function
+predicts amplitudes. Photometric fitting is a separate step.
+
+When companion masses, stellar mass, and radius are supplied, `eval_modl()`
+adds Doppler-beaming and ellipsoidal variations to the light curve. Beaming
+repeats once per orbit, while ellipsoidal variation repeats twice. With
+multiple companions, each term uses that companion's orbital phase and adds to
+the baseline light curve.
 
 `eval_modl()` retains white plot backgrounds with black axes by default.
 Pass `typeplotback='dark'` for a dark theme with white axes. The selection is
@@ -73,8 +87,8 @@ python examples/planet_in_eclipsing_binary/planet_in_eclipsing_binary.py --typef
 
 ## Light-curve modeling
 Choose the geometry and brightness model, then calculate the light curve. The
-examples below show what changes when I add a moon, a disk, a comet-like tail,
-or a nonuniform brightness map. Each model comes with its own approximations.
+examples below show how a moon, disk, comet-like tail, or nonuniform brightness
+map changes the prediction. Each model has its own approximations.
 
 `evaluate_exomoon_transit_model()` combines a circular, coplanar planet and moon
 on a limb-darkened stellar image grid. It accepts their radii and the moon's
@@ -294,7 +308,7 @@ pixel and integrates the central pixel containing the point-lens singularity.
 This resolves the planetary signal even when its Einstein radius is smaller
 than a pixel. Tests compare all four lens masses with the exact centered
 uniform-source result on both coarse and default grids. New example figures
-are timestamped under `examples/self_lensing/visuals/`; earlier files are
+are timestamped under `examples/self_lensing/visuals/`. Earlier files are
 preserved.
 
 The known-self-lenser example compares Ephesos predictions with public Kepler

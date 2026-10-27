@@ -140,7 +140,7 @@ def run_example(
         )
         axis.axhline(0.0, color="0.25", linewidth=0.8)
         axis.set_title(
-            rf"{system.name}: $M_\mathrm{{lens}}={system.lens_mass_solar:.3g}\,M_\odot$, "
+            rf"{system.name}, $M_\mathrm{{lens}}={system.lens_mass_solar:.3g}\,M_\odot$, "
             rf"$P={system.period_days:.3g}$ d"
         )
         axis.set_ylabel("Flux excess [ppm]")

@@ -7,6 +7,208 @@ import pytest
 import ephesos
 
 
+@pytest.mark.parametrize('sample_count', [3, 8, 10, 23])
+@pytest.mark.filterwarnings('error::RuntimeWarning')
+def test_native_orbital_history_avoids_empty_fade_segments(monkeypatch, sample_count):
+    from importlib import import_module
+
+    model = import_module('ephesos.main')
+    captured = []
+    normalize = model._normalize_alpha_series
+
+    def capture(values):
+        captured.append(np.array(values, copy=True))
+        return normalize(values)
+
+    monkeypatch.setattr(model, '_normalize_alpha_series', capture)
+    times = np.linspace(0.25, 1.75, sample_count)  # [day]
+    result = model.eval_modl(
+        times, 'StellarBinary', pericomp=np.array([2.0]),
+        epocmtracomp=np.array([0.0]), rsmacomp=np.array([0.04]),
+        cosicomp=np.array([0.0]), rratcomp=np.array([0.01]),
+        masscomp=np.array([0.01]), massstar=1.0, radistar=1.0,
+        typelmdk='quad', booldiag=False, typeverb=0,
+    )
+
+    assert result['rflx'].shape == (sample_count, 1)
+    assert np.isfinite(result['rflx']).all()
+    assert len(captured) == 1
+    assert captured[0].size == min(10, sample_count)
+    assert np.isfinite(captured[0]).all()
+
+
+@pytest.mark.parametrize('companion_count', [1, 2])
+@pytest.mark.parametrize('system_type', ['StellarBinary', 'PlanetarySystemEmittingCompanion'])
+def test_stellar_binary_phase_modulations_preserve_cycles_and_components(companion_count, system_type):
+    from importlib import import_module
+    from astropy.constants import M_earth, M_sun
+
+    model = import_module('ephesos.main')
+    times = np.array([0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.25])  # [day]
+    periods = np.array([2.0, 4.0])[:companion_count]  # [day]
+    masses = np.array([0.01, 0.03])[:companion_count]  # [solar mass]
+    parameters = dict(
+        pericomp=periods, epocmtracomp=np.zeros(companion_count),
+        rsmacomp=np.array([0.04, 0.05])[:companion_count],
+        cosicomp=np.zeros(companion_count), rratcomp=np.full(companion_count, 0.01),
+        masscomp=(masses * (M_sun / M_earth).value
+              if system_type == 'PlanetarySystemEmittingCompanion' else masses),
+    )
+    originals = {name: values.copy() for name, values in parameters.items()}
+    effective_masses = (parameters['masscomp'] / model.tdpy.retr_factconv()['msme']
+                        if system_type == 'PlanetarySystemEmittingCompanion' else masses)
+    amplitudes = ephesos.evaluate_compact_object_signatures(
+        periods, effective_masses, stellar_density_cgs=1.4,  # [g cm^-3]
+    )
+
+    options = ({'typebrgtcomp': 'isot', 'ratibrgtcomp': 0.0}
+               if system_type == 'PlanetarySystemEmittingCompanion' else {})
+    result = model.eval_modl(
+        times, system_type, **parameters, **options,
+        massstar=1.0, radistar=1.0, typelmdk='quad',
+        booldiag=False, typeverb=0,
+    )
+
+    expected_total = np.ones(times.size)
+    for companion in range(companion_count):
+        angle = 2.0 * np.pi * times / periods[companion]
+        expected_beaming = 1.0 + 1e-3 * amplitudes['beaming'][companion] * np.sin(angle)
+        expected_ellipsoidal = 1.0 - 1e-3 * amplitudes['ellipsoidal'][companion] * np.cos(2.0 * angle)
+        np.testing.assert_allclose(result['rflxbeam'][companion], expected_beaming, rtol=0, atol=1e-14)
+        np.testing.assert_allclose(result['rflxelli'][companion], expected_ellipsoidal, rtol=0, atol=1e-14)
+        np.testing.assert_allclose(result['rflxslen'][companion], np.ones(times.size), rtol=0, atol=1e-14)
+        assert not np.shares_memory(result['rflxslen'][companion], result['rflx'])
+        expected_total += expected_beaming - 1.0 + expected_ellipsoidal - 1.0
+    np.testing.assert_allclose(result['rflx'][:, 0], expected_total, rtol=0, atol=1e-14)
+    for name, values in parameters.items():
+        np.testing.assert_array_equal(values, originals[name])
+    result['rflx'][0, 0] += 1.0
+    for component in result['rflxslen']:
+        np.testing.assert_allclose(component, np.ones(times.size), rtol=0, atol=1e-14)
+
+
+def test_stellar_binary_computes_full_duration_for_phase_sampling():
+    from importlib import import_module
+
+    model = import_module('ephesos.main')
+    times = np.array([0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.25])  # [day]
+    result = model.eval_modl(
+        times,
+        'StellarBinary',
+        pericomp=np.array([2.0]),  # [day]
+        epocmtracomp=np.array([0.0]),  # [day]
+        rsmacomp=np.array([0.04]),
+        cosicomp=np.array([0.0]),
+        rratcomp=np.array([0.01]),
+        masscomp=np.array([0.01]),  # [solar mass]
+        massstar=1.0,  # [solar mass]
+        radistar=1.0,  # [solar radius]
+        typelmdk='quad',
+        booldiag=False,
+        typeverb=0,
+    )
+
+    assert np.isfinite(result['duratranfullcomp']).all()
+    assert np.isfinite(result['rflx']).all()
+
+
+@pytest.mark.parametrize('phase', [0.1, 0.2])
+@pytest.mark.parametrize('diagnostics', [False, True])
+def test_orbital_anomaly_consistency_error_is_not_masked(monkeypatch, phase, diagnostics):
+    from importlib import import_module
+    from unittest.mock import Mock
+
+    model = import_module('ephesos.main')
+    solver = Mock(return_value=0.0)
+    monkeypatch.setattr(model, 'solve_kepler_equation', solver)
+    semimajor_axis = 2.0  # [AU]
+
+    if diagnostics:
+        with pytest.raises(Exception, match='anomtrue calculation is anomalous'):
+            model.retr_anomdist(phase, semimajor_axis, 0.0, booldiag=True)
+    else:
+        mean, eccentric, true, separation = model.retr_anomdist(
+            phase, semimajor_axis, 0.0, booldiag=False,
+        )
+        assert mean == 2.0 * np.pi * phase
+        assert eccentric == true == 0.0
+        assert separation == semimajor_axis
+    solver.assert_called_once_with(2.0 * np.pi * phase, 0.0)
+
+
+@pytest.mark.parametrize('diagnostics', [False, True])
+@pytest.mark.parametrize('occulted_flux', [0.1, 2.0])
+def test_compact_object_flux_checks_use_state_diagnostic_flag(monkeypatch, diagnostics, occulted_flux):
+    from importlib import import_module
+
+    model = import_module('ephesos.main')
+    lensed_brightness = np.full((2, 2), 0.1)
+    original_brightness = lensed_brightness.copy()
+    state = SimpleNamespace(
+        typeverb=0, boolproftime=False, boolstopproftime=False,
+        booldiag=diagnostics, boolmakeanimsbrt=False,
+        typecoor='comp', typesyst='CompactObjectStellarCompanion',
+        typebrgtcomp='dark', boolsystpsys=False, perimoon=None,
+        listphaseval=[np.array([0.3])], numbphaseval=[1],
+        xposstargridcomp=np.zeros(1), yposstargridcomp=np.zeros(1),
+        zposstargridcomp=np.zeros(1),
+        listposiprimgridcompeval=[np.zeros((1, 3))],
+        lumisysteval=[np.zeros(1)], lumistarnocc=1.0,
+        xposgridcomp=[np.zeros((2, 2))], yposgridcomp=[np.zeros((2, 2))],
+        distfromprimgridcomp=[np.zeros((2, 2))],
+        xposgridsour=np.zeros((2, 2)), yposgridsour=np.zeros((2, 2)),
+    )
+    monkeypatch.setattr(model, 'retr_diststarcompfromphas_efes',
+                        lambda *args: (0.2, 0.0, 1.0, 0.0, 0.0, 0.0))
+    monkeypatch.setattr(model, 'retr_boolevalfluxconj', lambda *args: True)
+    monkeypatch.setattr(model, 'retr_brgtlens', lambda *args: lensed_brightness)
+    monkeypatch.setattr(model, 'retr_lumistartran',
+                        lambda *args, **kwargs: np.array([occulted_flux]))
+    expected_flux = np.sum(lensed_brightness) + state.lumistarnocc - occulted_flux
+
+    if diagnostics and expected_flux < 0.5 * state.lumistarnocc:
+        with pytest.raises(Exception, match='fluxtotlfram'):
+            model.proc_modl(state, 'pcur', 0, 0)
+        assert state.lumisysteval[0][0] == 0.0
+    else:
+        assert model.proc_modl(state, 'pcur', 0, 0) is None
+        assert state.lumisysteval[0][0] == expected_flux
+    np.testing.assert_array_equal(lensed_brightness, original_brightness)
+
+
+@pytest.mark.parametrize("shape", [(8,), (2, 4)])
+def test_source_plane_magnification_uses_chalcedon_and_preserves_signed_images(monkeypatch, shape):
+    import ast
+    import inspect
+    from importlib import import_module
+    from unittest.mock import Mock
+
+    model = import_module("ephesos.main")
+    syntax = ast.parse(inspect.getsource(model))
+    assignment, = [
+        node for node in ast.walk(syntax)
+        if isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Attribute) and target.attr == "magn"
+            and isinstance(target.value, ast.Name) and target.value.id == "gdat"
+            for target in node.targets
+        )
+    ]
+    separation = np.array([-10.0, -1.0, -0.1, -0.001, 0.001, 0.1, 1.0, 10.0]).reshape(shape)
+    original = separation.copy()
+    expected = abs((separation**2 + 2.0) / (2.0 * separation * np.sqrt(separation**2 + 4.0)) + 0.5)
+    state = SimpleNamespace(distsournormgridsour=separation)
+    shared_magnification = Mock(wraps=model.chalcedon.retr_magnpntslens)
+    monkeypatch.setattr(model.chalcedon, "retr_magnpntslens", shared_magnification)
+
+    exec(compile(ast.Module(body=[assignment], type_ignores=[]), model.__file__, "exec"),
+         {"gdat": state, "chalcedon": model.chalcedon, "np": np})
+
+    shared_magnification.assert_called_once()
+    assert shared_magnification.call_args.args[0] is separation
+    np.testing.assert_allclose(state.magn, expected, rtol=1e-14)
+    np.testing.assert_array_equal(separation, original)
+
+
 @pytest.mark.parametrize("eccentricity", [-0.4, 0.0, 0.4, 0.85])
 def test_orbital_anomalies_use_shared_kepler_solver_and_preserve_distances(monkeypatch, eccentricity):
     from importlib import import_module
@@ -482,6 +684,55 @@ def test_multiplanet_model_contains_repeated_transits() -> None:
     assert transit_starts.size >= 4
 
 
+@pytest.mark.parametrize("parameter", [
+    "period_days", "transit_epoch_days", "radius_ratio",
+    "summed_radius_to_semimajor_axis", "cosine_inclination",
+])
+@pytest.mark.parametrize("kind", ["masked", "complex"])
+def test_multiplanet_rejects_missing_and_nonreal_planet_parameters(monkeypatch, parameter, kind):
+    from importlib import import_module
+    from unittest.mock import Mock
+
+    inputs = {
+        "period_days": np.array([1.5, 2.4]),  # [day]
+        "transit_epoch_days": np.array([0.2, 0.8]),  # [day]
+        "radius_ratio": np.array([0.07, 0.06]),
+        "summed_radius_to_semimajor_axis": np.array([0.05, 0.04]),
+        "cosine_inclination": np.array([0.005, 0.01]),
+    }
+    if kind == "masked":
+        inputs[parameter] = np.ma.array(inputs[parameter], mask=[True, False])
+    else:
+        inputs[parameter] = inputs[parameter].astype(complex) + 1j
+    forward_model = Mock(side_effect=AssertionError("Invalid parameters reached the model"))
+    monkeypatch.setattr(import_module("ephesos.models"), "eval_modl", forward_model)
+
+    with pytest.raises(ValueError, match="unmasked real"):
+        ephesos.evaluate_multiplanet_transit_model(np.linspace(0.0, 1.0, 101), **inputs)
+
+    forward_model.assert_not_called()
+
+
+def test_multiplanet_preserves_fully_unmasked_parameter_containers():
+    time_days = np.linspace(0.0, 1.0, 101)  # [day]
+    inputs = {
+        "period_days": np.array([1.5, 2.4]),  # [day]
+        "transit_epoch_days": np.array([0.2, 0.8]),  # [day]
+        "radius_ratio": np.array([0.07, 0.06]),
+        "summed_radius_to_semimajor_axis": np.array([0.05, 0.04]),
+        "cosine_inclination": np.array([0.005, 0.01]),
+    }
+    expected = ephesos.evaluate_multiplanet_transit_model(time_days, **inputs)
+    containers = {name: np.ma.array(values, mask=False) for name, values in inputs.items()}
+
+    actual = ephesos.evaluate_multiplanet_transit_model(time_days, **containers)
+
+    np.testing.assert_array_equal(actual, expected)
+    for name, values in containers.items():
+        np.testing.assert_array_equal(np.ma.getdata(values), inputs[name])
+        assert not np.ma.getmaskarray(values).any()
+
+
 def test_self_lensing_model_produces_symmetric_brightening() -> None:
     time_days = np.linspace(-0.5, 0.5, 101)  # [day]
 
@@ -533,6 +784,33 @@ def test_compact_object_signatures_reject_invalid_inputs(
 ) -> None:
     with pytest.raises(ValueError, match="finite|positive"):
         ephesos.evaluate_compact_object_signatures(period_days, companion_mass_solar)
+
+
+@pytest.mark.parametrize("index", range(5))
+@pytest.mark.parametrize("invalid_kind", ["masked", "complex_zero", "complex_nonzero"])
+def test_compact_object_signatures_reject_masked_and_complex_arrays(index, invalid_kind):
+    arguments = [10.0, 5.0, 1.0, 1.0, 1.41]
+    if invalid_kind == "masked":
+        arguments[index] = np.ma.array([arguments[index]], mask=[True])
+    else:
+        imaginary = 0.0 if invalid_kind == "complex_zero" else 1.0
+        arguments[index] = np.array([arguments[index] + imaginary * 1j])
+    original = arguments[index].copy()
+    with pytest.raises(ValueError, match="unmasked real"):
+        ephesos.evaluate_compact_object_signatures(*arguments)
+    np.testing.assert_array_equal(arguments[index], original)
+    np.testing.assert_array_equal(np.ma.getmaskarray(arguments[index]), np.ma.getmaskarray(original))
+
+
+def test_compact_object_signatures_accept_fully_unmasked_arrays():
+    period = np.array([10.0, 30.0])
+    mass = np.array([5.0, 30.0])
+    expected = ephesos.evaluate_compact_object_signatures(period, mass)
+    result = ephesos.evaluate_compact_object_signatures(
+        np.ma.array(period, mask=False), np.ma.array(mass, mask=False),
+    )
+    for name in expected:
+        np.testing.assert_array_equal(result[name], expected[name])
 
 
 def test_mutual_hill_separations_identify_pairwise_stable_spacing() -> None:

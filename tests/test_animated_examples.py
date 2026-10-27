@@ -10,6 +10,32 @@ from PIL import Image
 EXAMPLE_DIRECTORY = Path(__file__).parents[1] / "examples"
 
 
+@pytest.mark.parametrize('diagnostics', [False, True])
+def test_brightness_frame_preserves_unsupported_coordinate_error(tmp_path, monkeypatch, diagnostics):
+    from importlib import import_module
+    from types import SimpleNamespace
+
+    model = import_module('ephesos.main')
+    state = SimpleNamespace(
+        listnamevarbfram=['sbrt'], pathgiff={'sbrt': str(tmp_path / 'absent.gif')},
+        pathvisu=str(tmp_path) + '/', strgextn='test', typefileplot='png',
+        typecoor='unsupported', typesyst='PlanetarySystem',
+        booldiag=diagnostics, boolevalflux=True, boolsystpsys=True,
+    )
+    monkeypatch.setattr(model.plt, 'savefig',
+                        lambda *args, **kwargs: pytest.fail('Invalid frame must not be written'))
+    original_figures = set(model.plt.get_fignums())
+    try:
+        with pytest.raises(Exception, match='Could not define brgttemp'):
+            model.make_imag(state, 0)
+    finally:
+        for figure_number in set(model.plt.get_fignums()) - original_figures:
+            model.plt.close(figure_number)
+
+    assert state.typecoor == 'unsupported'
+    assert not list(tmp_path.iterdir())
+
+
 def test_only_supported_standalone_examples_are_at_root():
     standalone_examples = {
         path.name
